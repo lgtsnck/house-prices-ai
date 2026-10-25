@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# PyCharm
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local datasets
+data/*.csv
+data/*.zip
+
+# Generated outputs
+outputs/
+
+# Secrets
+.env
+.env.*
+!.env.example
+.kaggle/
