@@ -1,0 +1,10 @@
+# Библиотеки для лабораторных работ №1–2 и Jupyter Notebook.
+# XGBoost, SHAP и библиотеку для нейросетей добавим при выполнении следующих работ.
+numpy>=2.1,<3
+pandas>=2.2,<3
+matplotlib>=3.9,<4
+seaborn>=0.13,<0.15
+scikit-learn>=1.6,<2
+ipykernel>=6.29,<8
+jupyterlab>=4.3,<5
+jupytext>=1.16,<2
