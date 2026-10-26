@@ -1,24 +1,50 @@
-# Python
+# Python virtual environments
 .venv/
+venv/
+
+# Python caches and build artifacts
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
 
-# PyCharm
+# IDE
 .idea/
+.vscode/
 
 # Jupyter
 .ipynb_checkpoints/
 
-# Local datasets
+# Kaggle competition data
+data/raw/*
+!data/raw/.gitkeep
+
+# Processed datasets
+data/processed/*
+!data/processed/.gitkeep
+
+# Other local datasets
 data/*.csv
 data/*.zip
+data/*.parquet
 
-# Generated outputs
-outputs/
+# Generated outputs and trained models
+outputs/*
+!outputs/.gitkeep
 
-# Secrets
+# Secrets and credentials
 .env
 .env.*
 !.env.example
 .kaggle/
+kaggle.json
+
+# System files
+.DS_Store
+Thumbs.db
