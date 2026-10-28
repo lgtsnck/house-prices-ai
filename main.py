@@ -22,8 +22,8 @@ def main(argv: list[str] | None = None) -> int:
         description="Курсовой проект по дисциплине «Системы искусственного интеллекта»"
     )
     parser.add_argument(
-        "command", nargs="?", default="info", choices=("info", "plan", "eda"),
-        help="info — сведения; plan — список лабораторных; eda — выполнить ЛР №1",
+        "command", nargs="?", default="info", choices=("info", "plan", "eda", "preprocessing"),
+        help="info — сведения; plan — этапы; eda — анализ данных; preprocessing — подготовка данных",
     )
     parser.add_argument("--data", default=str(RAW_TRAIN_FILE), help="Путь к train.csv (для eda)")
     parser.add_argument("--output", default=str(OUTPUT_DIR / "eda"), help="Каталог результатов (для eda)")
@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
         print("План выполнения лабораторных работ:")
         for number, command, description in STAGES:
             print(f"  {number}. {command:16} {description}")
-    else:
+    elif args.command == "eda":
         from house_prices_ai.eda import run_eda
 
         try:
@@ -52,6 +52,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Пропущенных значений: {result.missing_total}")
         print(f"Отчёт: {result.report_path}")
         print(f"Создано графиков: {len(result.plots)}")
+    elif args.command == "preprocessing":
+        from house_prices_ai.preprocessing import run_preprocessing
+
+        try:
+            result = run_preprocessing(args.data)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Ошибка предобработки: {exc}")
+            return 2
+        print("Предобработка и инженерия признаков завершены.")
+        print(f"Train: {result.train_rows} строк, test: {result.test_rows} строк")
+        print(f"Признаков после кодирования: {result.features_count}")
+        print(f"Отчёт: {result.report_path}")
+        print(f"Сформировано графиков: {len(result.generated_plots)}")
     return 0
 
 
