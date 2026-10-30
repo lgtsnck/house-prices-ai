@@ -250,3 +250,25 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         result["pca"] = file
 
     return result
+
+
+# === Общие функции оформления изображений проекта ===
+# Не изменяют математическую логику визуализаций EDA.
+def create_a4_figure(**kwargs):
+    """Книжная A4-страница с белым фоном для графиков следующих этапов."""
+    import matplotlib.pyplot as plt
+    return plt.subplots(figsize=(8.27, 11.69), facecolor="white", **kwargs)
+
+
+def save_a4_figure(fig, path, *, dpi=200, pad_inches=0.22):
+    """Сохраняет график на белом фоне с полями для полных подписей."""
+    from pathlib import Path
+    import matplotlib.pyplot as plt
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if fig.get_figwidth() >= fig.get_figheight():
+        raise ValueError(f"Ожидалась книжная ориентация рисунка: {path}")
+    fig.set_facecolor("white")
+    fig.savefig(path, dpi=dpi, bbox_inches="tight",
+                pad_inches=pad_inches, facecolor="white")
+    plt.close(fig)
