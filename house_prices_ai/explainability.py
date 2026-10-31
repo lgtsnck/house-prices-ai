@@ -15,6 +15,7 @@ import joblib
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from house_prices_ai.visualization import create_a4_figure, save_shap_a4_figure
 import numpy as np
 import pandas as pd
 from scipy.special import expit
@@ -91,37 +92,14 @@ def _feature_importance(pipeline, raw: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+
 def _save(fig, path: Path) -> None:
-    """Сохраняет график с полными подписями на белую книжную страницу A4.
-
-    Графики SHAP могут выходить за границы исходной фигуры, поэтому сначала
-    берётся корректный tight-crop, затем изображение вписывается в A4 без
-    изменения пропорций. Надписи не обрезаются по краям страницы.
-    """
-    from io import BytesIO
-    from PIL import Image
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.set_facecolor("white")
-    buf = BytesIO()
-    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight",
-                pad_inches=.25, facecolor="white")
-    plt.close(fig)
-    buf.seek(0)
-    cropped = Image.open(buf).convert("RGB")
-    a4 = (1488, 2104)  # 8.27 × 11.69 inch при 180 dpi.
-    free = (a4[0] - 110, a4[1] - 120)
-    ratio = min(free[0] / cropped.width, free[1] / cropped.height, 1.0)
-    fitted = cropped.resize((round(cropped.width * ratio), round(cropped.height * ratio)),
-                            Image.Resampling.LANCZOS)
-    canvas = Image.new("RGB", a4, "white")
-    xy = ((a4[0] - fitted.width) // 2, (a4[1] - fitted.height) // 2)
-    canvas.paste(fitted, xy)
-    canvas.save(path, dpi=(180, 180))
+    """A4 с вписыванием SHAP и длинных подписей без обрезки."""
+    save_shap_a4_figure(fig, path)
 
 
 def _plot_importance_pair(rf_table: pd.DataFrame, xgb_table: pd.DataFrame, path: Path) -> None:
-    fig, axes = plt.subplots(2, 1, figsize=(8.27, 11.69), facecolor="white")
+    fig, axes = create_a4_figure(2, 1, figsize=(8.27, 11.69), facecolor="white")
     for ax, table, label, color in zip(
         axes, (rf_table, xgb_table),
         ("Random Forest — уменьшение неоднородности", "XGBoost — важность разделений"),
@@ -183,7 +161,7 @@ def _shap_waterfall(one_row, path: Path, units: str) -> None:
     delta = max(high - low, abs(predicted) * .03, 1.)
     pad = .24 * delta
 
-    fig, ax = plt.subplots(figsize=(8.27, 11.69), facecolor="white")
+    fig, ax = create_a4_figure(figsize=(8.27, 11.69), facecolor="white")
     for i, (name, value) in enumerate(rows):
         left = min(starts[i], starts[i + 1])
         ax.barh(i, abs(value), left=left, height=.62,
@@ -375,7 +353,7 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
         p = out / "shap_compare_rf_xgb_regression.csv"
         compare.to_csv(p)
         tables["compare_rf_shap"] = p
-        fig, axes = plt.subplots(2, 1, figsize=(8.27, 11.69), facecolor="white")
+        fig, axes = create_a4_figure(2, 1, figsize=(8.27, 11.69), facecolor="white")
         for ax, name, col, color in (
             (axes[0], "Random Forest", "RF_MeanAbsSHAP_USD", "#487cac"),
             (axes[1], "XGBoost", "XGBoost_MeanAbsSHAP_USD", "#378f70"),

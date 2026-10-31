@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from house_prices_ai.visualization import create_a4_figure, save_a4_figure
 import json
 
 
@@ -23,9 +24,8 @@ def regression_metrics(y_true, y_pred) -> dict[str, float]:
 
 
 def _save_figure(fig, path: Path) -> None:
-    fig.set_facecolor("white")
-    fig.savefig(path, dpi=200, facecolor="white", bbox_inches="tight", pad_inches=0.25)
-    plt.close(fig)
+    """Сохранение A4 с теми же полями, что и ранее."""
+    save_a4_figure(fig, path, dpi=200, pad_inches=.25)
 
 
 
@@ -82,7 +82,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     order = cv_summary.sort_values("MAE_mean")["Model"].tolist()
     ranked = cv_summary.set_index("Model").loc[order]
     bar_colors = ["#287c6b" if name == order[0] else "#477baf" for name in order]
-    fig, axes = plt.subplots(3, 1, figsize=(8.27, 11.69))
+    fig, axes = create_a4_figure(3, 1, figsize=(8.27, 11.69))
     panels = [
         ("R2_mean", "R² — коэффициент детерминации (больше — лучше)", ".3f"),
         ("MAE_mean", "MAE, USD (меньше — лучше)", ",.0f"),
@@ -113,7 +113,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     # 3.2 — вариация валидационного R² между пятью фолдами.
     model_order = cv_summary.sort_values("R2_mean", ascending=False)["Model"].tolist()
     values = [cv_folds.loc[cv_folds.Model == name, "R2"].to_numpy() for name in model_order]
-    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+    fig, ax = create_a4_figure(figsize=(8.27, 11.69))
     ax.boxplot(values, tick_labels=model_order, vert=False, patch_artist=True,
                boxprops={"facecolor":"#c5d9eb", "edgecolor":colors},
                medianprops={"color":"#1d456a", "linewidth":2})
@@ -129,7 +129,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     residual = y-pred
 
     # 3.3 — прогноз против факта: out-of-fold prediction.
-    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+    fig, ax = create_a4_figure(figsize=(8.27, 11.69))
     ax.scatter(y, pred, s=13, alpha=.48, color=colors)
     lo, hi = float(min(y.min(),pred.min())), float(max(y.max(), pred.max()))
     ax.plot([lo,hi], [lo,hi], '--', lw=1.5, color="#b65d4f")
@@ -142,7 +142,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     _save_figure(fig, result["actual_pred"])
 
     # 3.4 — остатки относительно прогноза.
-    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+    fig, ax = create_a4_figure(figsize=(8.27, 11.69))
     ax.scatter(pred, residual, s=13, alpha=.48, color=colors)
     ax.axhline(0, lw=1.5, ls='--', color="#b65d4f")
     ax.set_xlabel("Прогноз (OOF), USD")
@@ -153,7 +153,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
 
     # 3.5 — Q-Q. Нормальность остатков не обязательна для XGBoost,
     # график является диагностикой хвостов распределения ошибок.
-    fig, ax = plt.subplots(figsize=(8.27, 11.69))
+    fig, ax = create_a4_figure(figsize=(8.27, 11.69))
     stats.probplot(residual, dist="norm", plot=ax)
     ax.get_lines()[0].set_markerfacecolor(colors)
     ax.get_lines()[0].set_markeredgecolor(colors)
@@ -170,7 +170,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     if mlp_model is not None:
         regressor = mlp_model.named_steps["model"].regressor_
         if getattr(regressor, "loss_curve_", None) is not None and len(regressor.loss_curve_) > 0:
-            fig, ax = plt.subplots(figsize=(8.27, 11.69))
+            fig, ax = create_a4_figure(figsize=(8.27, 11.69))
             epochs = np.arange(1, len(regressor.loss_curve_)+1)
             ax.plot(epochs, regressor.loss_curve_, color=colors, lw=2)
             ax.set_xlabel("Эпоха")

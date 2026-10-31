@@ -1,8 +1,9 @@
-"""Визуализация результатов EDA для ЛР №1 (файлы остаются локально)."""
+"""Общие средства оформления графиков House Prices AI и иллюстрации EDA."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
 from math import ceil
 
 from matplotlib.transforms import Bbox
@@ -51,34 +52,25 @@ def _plot_title(feature: str) -> str:
 
 
 def _finish_plot(fig: plt.Figure, path: Path, *, dpi: int = 180) -> None:
-    """Сохранить рисунок с одинаковыми внешними полями и книжной ориентацией.
+    """Сохранить страницу EDA, сохранив поля и книжную ориентацию.
 
-    Реальную область надписей и графиков измеряем после отрисовки, чтобы
-    не оставлять пустые строки сетки и не обрезать длинные подписи/легенды.
-    Формат A4 задаётся в документе при вставке, а PNG сохраняет пропорции.
+    Ориентация контролируется здесь, а не в общем save_a4_figure:
+    строгая проверка последнего остаётся полезной для остальных модулей.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.canvas.draw()
-    bbox = fig.get_tightbbox(fig.canvas.get_renderer())  # Координаты в дюймах.
-
-    padding = 0.18  # Одинаковый отступ от крайних видимых элементов.
-    left, bottom = bbox.x0 - padding, bbox.y0 - padding
-    right, top = bbox.x1 + padding, bbox.y1 + padding
-    width = right - left
-    height = top - bottom
-    # Некоторые компактные рисунки почти квадратные. Добавляем белое поле
-    # поровну сверху и снизу, чтобы все файлы оставались книжными.
-    min_height = width * 1.06
-    if height < min_height:
-        extra = (min_height - height) / 2
-        bottom -= extra
-        top += extra
-
-    # Используем явный bbox: в отличие от сохранения полной фигуры,
-    # на страницах с 5 признаками не возникает огромного белого подвала.
-    fig.savefig(path, dpi=dpi, facecolor="white", pad_inches=0,
-                bbox_inches=Bbox.from_extents(left, bottom, right, top))
-    plt.close(fig)
+    width, height = (float(v) for v in fig.get_size_inches())
+    if width >= height:
+        # В EDA все страницы должны быть книжными. Исправляем только
+        # неожиданно альбомный или квадратный холст, а не макет осей.
+        if width > height:
+            new_width, new_height = height, width
+        else:
+            new_width, new_height = width, width * (11.69 / 8.27)
+        fig.set_size_inches(new_width, new_height, forward=False)
+        print(
+            f"EDA: исправлена ориентация {path.name}: "
+            f"{width:.2f}×{height:.2f} → {new_width:.2f}×{new_height:.2f} дюймов"
+        )
+    save_a4_figure(fig, path, dpi=dpi, bbox_inches=None)
 
 
 def _sheet_axes(count: int) -> tuple[plt.Figure, np.ndarray]:
@@ -87,7 +79,7 @@ def _sheet_axes(count: int) -> tuple[plt.Figure, np.ndarray]:
         raise ValueError("Количество панелей должно быть от 1 до 8")
     rows = ceil(count / 2)
     height = 0.70 + 2.13 * rows
-    fig, axes = plt.subplots(rows, 2, figsize=(6.6, height), squeeze=False)
+    fig, axes = create_report_figure(rows, 2, figsize=(6.6, height), squeeze=False)
     fig.subplots_adjust(left=.15, right=.955, top=.955, bottom=.065,
                         hspace=.82, wspace=.44)
     flat = axes.reshape(-1)
@@ -174,7 +166,7 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         result[f"boxplots_{p+1:02d}"] = file
 
     # 03: ценовая цель. На весь рисунок оставляем только аналитические подписи.
-    fig, ax = plt.subplots(figsize=(6.6, 8.2))
+    fig, ax = create_report_figure(figsize=(6.6, 8.2))
     sns.histplot(data=data, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
     ax.axvline(price_threshold, linestyle="--", color="#b76555",
                label=f"Порог класса: ${price_threshold:,}")
@@ -191,7 +183,7 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
     corr = numeric.corr()
     # Больше полезной площади листа: увеличиваем матрицу, а не вставляем
     # растянутую готовую картинку. Все коэффициенты считаются на лету.
-    fig, ax = plt.subplots(figsize=(7.45, 8.25))
+    fig, ax = create_report_figure(figsize=(7.45, 8.25))
     sns.heatmap(corr, cmap="coolwarm", center=0, vmin=-1, vmax=1,
                 annot=False, square=False, linewidths=.10, linecolor="white",
                 cbar_kws={"shrink": .82, "pad": .012, "fraction": .035,
@@ -240,7 +232,7 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         transformed = StandardScaler().fit_transform(imputed)
         pca = PCA(n_components=2, random_state=RANDOM_STATE)
         points = pca.fit_transform(transformed)
-        fig, ax = plt.subplots(figsize=(6.6, 8.1))
+        fig, ax = create_report_figure(figsize=(6.6, 8.1))
         ax.scatter(points[:, 0], points[:, 1], c="#537fab", s=16, alpha=.5)
         ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} дисперсии)")
         ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} дисперсии)")
@@ -252,23 +244,76 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
     return result
 
 
-# === Общие функции оформления изображений проекта ===
-# Не изменяют математическую логику визуализаций EDA.
-def create_a4_figure(**kwargs):
-    """Книжная A4-страница с белым фоном для графиков следующих этапов."""
-    import matplotlib.pyplot as plt
-    return plt.subplots(figsize=(8.27, 11.69), facecolor="white", **kwargs)
+# Общие функции оформления для всех этапов исследования.
+# Размеры и существующие параметры сохранения сохранены ради совместимости.
+A4_PORTRAIT_INCHES = (8.27, 11.69)
+A4_RASTER_SIZE_180DPI = (1488, 2104)
 
 
-def save_a4_figure(fig, path, *, dpi=200, pad_inches=0.22):
-    """Сохраняет график на белом фоне с полями для полных подписей."""
-    from pathlib import Path
-    import matplotlib.pyplot as plt
+def create_report_figure(*args, figsize=A4_PORTRAIT_INCHES, **kwargs):
+    """Создать белую фигуру с той же сигнатурой, что create_report_figure().
+
+    figsize может быть задан явно для старых графиков, чтобы не изменять
+    пропорции и поля во время рефакторинга.
+    """
+    kwargs.setdefault("facecolor", "white")
+    return plt.subplots(*args, figsize=figsize, **kwargs)
+
+
+def create_a4_figure(*args, **kwargs):
+    """Один или несколько графиков на книжной странице A4."""
+    return create_report_figure(*args, **kwargs)
+
+
+def save_a4_figure(fig, path, *, dpi=200, pad_inches=0.22,
+                   bbox_inches="tight", transparent=False):
+    """Общий способ сохранения книжных изображений.
+
+    По умолчанию сохраняется содержимое с полями (историческое поведение
+    регрессии/классификации/кластеризации). Для изображений с заранее
+    рассчитанными полями передавайте bbox_inches=None (EDA/предобработка).
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    if fig.get_figwidth() >= fig.get_figheight():
-        raise ValueError(f"Ожидалась книжная ориентация рисунка: {path}")
-    fig.set_facecolor("white")
-    fig.savefig(path, dpi=dpi, bbox_inches="tight",
-                pad_inches=pad_inches, facecolor="white")
-    plt.close(fig)
+    try:
+        if fig.get_figwidth() >= fig.get_figheight():
+            raise ValueError(f"Ожидалась книжная ориентация изображения: {path}")
+        fig.set_facecolor("white")
+        fig.savefig(path, dpi=dpi, bbox_inches=bbox_inches,
+                    pad_inches=pad_inches if bbox_inches else None,
+                    facecolor="white", transparent=transparent)
+    finally:
+        plt.close(fig)
+
+
+def save_shap_a4_figure(fig, path, *, dpi=180, margin_px=(110, 120)):
+    """Вписать график SHAP с длинными подписями в белый лист A4.
+
+    Сначала делается tight-crop, затем он масштабируется без искажения
+    пропорций, как в исходном модуле интерпретации. Возвращается PNG
+    стандартного размера 1488x2104 при dpi=180.
+    """
+    from PIL import Image
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    buf = BytesIO()
+    try:
+        fig.set_facecolor("white")
+        fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight",
+                    pad_inches=.25, facecolor="white")
+    finally:
+        plt.close(fig)
+    buf.seek(0)
+    with Image.open(buf) as raw:
+        cropped = raw.convert("RGB")
+    width, height = A4_RASTER_SIZE_180DPI
+    free_width = width - margin_px[0]
+    free_height = height - margin_px[1]
+    ratio = min(free_width / cropped.width, free_height / cropped.height, 1.0)
+    fitted = cropped.resize((round(cropped.width * ratio), round(cropped.height * ratio)),
+                            Image.Resampling.LANCZOS)
+    canvas = Image.new("RGB", (width, height), "white")
+    xy = ((width - fitted.width) // 2, (height - fitted.height) // 2)
+    canvas.paste(fitted, xy)
+    canvas.save(path, dpi=(dpi, dpi))

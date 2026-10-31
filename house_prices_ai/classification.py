@@ -14,6 +14,7 @@ import joblib
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from house_prices_ai.visualization import create_a4_figure, save_a4_figure
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
@@ -147,13 +148,11 @@ def compare_classifiers(X: pd.DataFrame, y: pd.Series, folds: int = 5,
 
 
 def _save(fig: plt.Figure, path: Path) -> None:
-    fig.set_facecolor("white")
-    fig.savefig(path, dpi=185, bbox_inches="tight", pad_inches=.24, facecolor="white")
-    plt.close(fig)
+    save_a4_figure(fig, path, dpi=185, pad_inches=.24)
 
 
 def _figure() -> tuple[plt.Figure, plt.Axes]:
-    return plt.subplots(figsize=(8.27, 11.69), facecolor="white")
+    return create_a4_figure()
 
 
 def save_mlp_history(model: Pipeline, output_dir: Path) -> tuple[pd.DataFrame, dict]:
@@ -212,7 +211,7 @@ def create_classification_figures(y: pd.Series, oof: pd.DataFrame,
     _save(fig, figures["balance"])
 
     # Три отдельных шкалы, чтобы метрики не смешивались в одной системе координат.
-    fig, axes = plt.subplots(4, 1, figsize=(8.27, 11.69), facecolor="white")
+    fig, axes = create_a4_figure(4, 1, figsize=(8.27, 11.69), facecolor="white")
     measure = (("Accuracy_mean", "Accuracy"), ("Precision_mean", "Precision"),
                ("Recall_mean", "Recall"), ("F1_mean", "F1-score"))
     names = summary["Model"].tolist()[::-1]
@@ -231,7 +230,7 @@ def create_classification_figures(y: pd.Series, oof: pd.DataFrame,
     figures["comparison"] = output_dir / "4_2_comparison_metrics.png"
     _save(fig, figures["comparison"])
 
-    fig, axes = plt.subplots(2, 2, figsize=(8.27, 11.69), facecolor="white")
+    fig, axes = create_a4_figure(2, 2, figsize=(8.27, 11.69), facecolor="white")
     axes_flat = axes.ravel()
     for ax, name in zip(axes_flat, models):
         labels = oof[f"PredictedClass__{name}"].to_numpy(dtype=int)
@@ -288,7 +287,7 @@ def create_classification_figures(y: pd.Series, oof: pd.DataFrame,
     _save(fig, figures["pr"])
 
     if mlp_history is not None and len(mlp_history):
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8.27, 11.69), facecolor="white")
+        fig, (ax1, ax2) = create_a4_figure(2, 1, figsize=(8.27, 11.69), facecolor="white")
         e = mlp_history["Epoch"]
         ax1.plot(e, mlp_history["TrainingLoss"], color=COLORS["MLPClassifier"], linewidth=2)
         ax1.set_ylabel("Training loss")

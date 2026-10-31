@@ -28,6 +28,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from house_prices_ai.config import PROCESSED_DATA_DIR, RANDOM_STATE, RAW_TRAIN_FILE, OUTPUT_DIR
 from house_prices_ai.data_loader import load_training_data
+from house_prices_ai.visualization import create_report_figure, save_a4_figure
 
 CLASS_THRESHOLD = 200_000
 CONTINUOUS_TO_CAP = ("LotArea", "GrLivArea", "TotalBsmtSF", "GarageArea", "1stFlrSF", "2ndFlrSF")
@@ -291,10 +292,8 @@ def _evaluate_vif(train_processed: pd.DataFrame, *,
 
 
 def _save_plot(fig: plt.Figure, path: Path) -> None:
-    # Фиксированный книжный формат: все три рисунка одинакового размера.
-    # Не обрезаем рисунок до содержимого, иначе отступы будут различаться.
-    fig.savefig(path, dpi=200, facecolor="white", transparent=False)
-    plt.close(fig)
+    """Сохранить заранее рассчитанные поля без обрезки до содержимого."""
+    save_a4_figure(fig, path, dpi=200, bbox_inches=None)
 
 
 def _center_bar_chart(fig: plt.Figure, ax: plt.Axes) -> None:
@@ -437,7 +436,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
         }
         with plt.rc_context(plot_style):
             missing = X_train_raw.isna().sum().sort_values(ascending=False).head(14)
-            fig, ax = plt.subplots(figsize=(7, 9.5), facecolor="white")
+            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
             missing.iloc[::-1].plot.barh(ax=ax, color="#487da8")
             ax.set_xlabel("Число пропусков в обучающей выборке")
             ax.set_ylabel("")
@@ -450,7 +449,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
 
             top_scores = pd.Series(kb.scores_, index=X_train.columns).replace([np.inf, -np.inf], np.nan)
             top_scores = top_scores.fillna(0).sort_values(ascending=False).head(14)
-            fig, ax = plt.subplots(figsize=(7, 9.5), facecolor="white")
+            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
             top_scores.iloc[::-1].plot.barh(ax=ax, color="#487da8")
             ax.set_xlabel("Статистика F для связи с ценой продажи")
             ax.set_ylabel("")
@@ -461,7 +460,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
             plots["scores"] = output_dir / "02_feature_selection.png"
             _save_plot(fig, plots["scores"])
 
-            fig, ax = plt.subplots(figsize=(7, 9.5), facecolor="white")
+            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
             for cls, label, color in (
                 (0, "Цена ниже $200 000", "#3269ab"),
                 (1, "Цена от $200 000", "#cc6a35"),
