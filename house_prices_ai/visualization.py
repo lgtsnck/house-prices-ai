@@ -6,19 +6,13 @@ from pathlib import Path
 from io import BytesIO
 from math import ceil
 
-from matplotlib.transforms import Bbox
-
 import matplotlib
 matplotlib.use("Agg")  # Не требовать открытого окна для командного запуска.
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.decomposition import PCA
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
 
-from house_prices_ai.config import RANDOM_STATE
 
 
 # Краткие подписи к исходным названиям полей. Смысл признаков
@@ -111,18 +105,36 @@ def _draw_boxplot(ax: plt.Axes, values: np.ndarray) -> dict:
     )
 
 
-def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> dict[str, Path]:
+def save_eda_plots(
+    numeric: pd.DataFrame, dest: Path, *, price_threshold: int,
+    correlations: pd.DataFrame,
+    pairplot_samples: tuple[pd.DataFrame, ...],
+    pca_points: np.ndarray | None,
+    pca_explained_variance: tuple[float, float] | None,
+) -> dict[str, Path]:
+    """Нарисовать EDA, используя исключительно подготовленные аналитические данные."""
+    # Контекст вместо глобального sns.set_theme: настройки других этапов не меняем.
+    with sns.axes_style("whitegrid"), sns.plotting_context("notebook", font_scale=0.85):
+        return _render_eda_plots(
+            numeric, dest, price_threshold=price_threshold,
+            correlations=correlations, pairplot_samples=pairplot_samples,
+            pca_points=pca_points, pca_explained_variance=pca_explained_variance,
+        )
+
+
+def _render_eda_plots(
+    numeric: pd.DataFrame, dest: Path, *, price_threshold: int,
+    correlations: pd.DataFrame,
+    pairplot_samples: tuple[pd.DataFrame, ...],
+    pca_points: np.ndarray | None,
+    pca_explained_variance: tuple[float, float] | None,
+) -> dict[str, Path]:
     """Построить рисунки ЛР №1 с учётом книжного формата A4.
 
     Для 01/02 создаём по 8 диаграмм на страницу; корреляции — на одном
     портретном листе; pairplot — на двух листах. Все иллюстрации книжные.
     """
     dest.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid", font_scale=0.85)
-    numeric = data.select_dtypes(include=np.number).drop(columns=["Id"], errors="ignore")
-    numeric = numeric.loc[:, numeric.notna().any()]
-    if "SalePrice" not in numeric.columns:
-        raise ValueError("Нет числовой целевой переменной SalePrice")
     result: dict[str, Path] = {}
     columns = list(numeric.columns)
 
@@ -167,7 +179,7 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
 
     # 03: ценовая цель. На весь рисунок оставляем только аналитические подписи.
     fig, ax = create_report_figure(figsize=(6.6, 8.2))
-    sns.histplot(data=data, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
+    sns.histplot(data=numeric, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
     ax.axvline(price_threshold, linestyle="--", color="#b76555",
                label=f"Порог класса: ${price_threshold:,}")
     ax.set_xlabel("Цена продажи, доллары")
@@ -180,7 +192,7 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
 
     # 04: полная корреляционная матрица на одном книжном листе.
     # Подписи остаются техническими: их расшифровка — в Markdown Notebook.
-    corr = numeric.corr()
+    corr = correlations
     # Больше полезной площади листа: увеличиваем матрицу, а не вставляем
     # растянутую готовую картинку. Все коэффициенты считаются на лету.
     fig, ax = create_report_figure(figsize=(7.45, 8.25))
@@ -198,15 +210,9 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
     result["correlations"] = file
 
     # 05: две читаемые группы pairplot; на обеих есть SalePrice.
-    target_corr = corr["SalePrice"].drop("SalePrice").abs().sort_values(ascending=False)
-    important = target_corr.index[: min(5, len(target_corr))].tolist()
-    groups = [important[:3], important[3:]]
-    for p, group in enumerate(groups):
-        if len(group) < 1:
+    for p, subset in enumerate(pairplot_samples):
+        if subset.empty:
             continue
-        subset = data[group + ["SalePrice"]].dropna()
-        if len(subset) > 400:
-            subset = subset.sample(n=400, random_state=RANDOM_STATE)
         pair = sns.pairplot(subset, diag_kind="hist",
                             plot_kws={"s": 13, "alpha": .5, "color": "#537fab"},
                             diag_kws={"color": "#537fab"})
@@ -225,17 +231,12 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         result[f"pairplot_{p+1:02d}"] = file
 
     # 06: двумерный PCA только для визуальной разведки данных.
-    pca_features = numeric.drop(columns=["SalePrice"], errors="ignore")
-    pca_features = pca_features.loc[:, pca_features.nunique(dropna=True) > 1]
-    if pca_features.shape[1] >= 2:
-        imputed = SimpleImputer(strategy="median").fit_transform(pca_features)
-        transformed = StandardScaler().fit_transform(imputed)
-        pca = PCA(n_components=2, random_state=RANDOM_STATE)
-        points = pca.fit_transform(transformed)
+    if pca_points is not None and pca_explained_variance is not None:
+        points = pca_points
         fig, ax = create_report_figure(figsize=(6.6, 8.1))
         ax.scatter(points[:, 0], points[:, 1], c="#537fab", s=16, alpha=.5)
-        ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} дисперсии)")
-        ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} дисперсии)")
+        ax.set_xlabel(f"PC1 ({pca_explained_variance[0]:.1%} дисперсии)")
+        ax.set_ylabel(f"PC2 ({pca_explained_variance[1]:.1%} дисперсии)")
         fig.subplots_adjust(left=.14, right=.96, top=.96, bottom=.12)
         file = dest / "06_pca_numeric_features.png"
         _finish_plot(fig, file)
