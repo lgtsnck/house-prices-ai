@@ -11,9 +11,6 @@ from pathlib import Path
 import warnings
 
 import joblib
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -28,7 +25,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from house_prices_ai.config import PROCESSED_DATA_DIR, RANDOM_STATE, RAW_TRAIN_FILE, OUTPUT_DIR
 from house_prices_ai.data_loader import load_training_data
-from house_prices_ai.visualization import create_report_figure, save_a4_figure
+from house_prices_ai.visualization import save_preprocessing_plots
 
 CLASS_THRESHOLD = 200_000
 CONTINUOUS_TO_CAP = ("LotArea", "GrLivArea", "TotalBsmtSF", "GarageArea", "1stFlrSF", "2ndFlrSF")
@@ -291,26 +288,6 @@ def _evaluate_vif(train_processed: pd.DataFrame, *,
     }
 
 
-def _save_plot(fig: plt.Figure, path: Path) -> None:
-    """Сохранить заранее рассчитанные поля без обрезки до содержимого."""
-    save_a4_figure(fig, path, dpi=200, bbox_inches=None)
-
-
-def _center_bar_chart(fig: plt.Figure, ax: plt.Axes) -> None:
-    """Центрирует всю диаграмму, включая длинные подписи, по ширине PNG."""
-    fig.canvas.draw()
-    renderer = fig.canvas.get_renderer()
-    bbox = ax.get_tightbbox(renderer)
-    if bbox is None:
-        return
-    width = fig.bbox.width
-    desired_dx = (width - bbox.x0 - bbox.x1) / 2.0
-    padding = width * 0.04
-    dx = max(padding - bbox.x0, min(desired_dx, width - padding - bbox.x1))
-    x, y, w, h = ax.get_position().bounds
-    ax.set_position([x + dx / width, y, w, h])
-
-
 def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
                       output_dir: str | Path = OUTPUT_DIR / "preprocessing",
                       processed_dir: str | Path = PROCESSED_DATA_DIR,
@@ -374,6 +351,9 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
         kb = SelectKBest(score_func=f_regression, k=min(20, X_train.shape[1]))
         kb.fit(X_train, y_train_reg)
     kbest = list(X_train.columns[kb.get_support()])
+    feature_scores = pd.Series(kb.scores_, index=X_train.columns).replace(
+        [np.inf, -np.inf], np.nan
+    )
     rfe_list: list[str] = []
     vif_df = pd.DataFrame(columns=["Признак", "VIF", "Интерпретация"])
     vif_reduced = vif_df.copy()
@@ -384,8 +364,9 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
     if run_diagnostics:
         # RFE на 50 наиболее значимых по F-признаках: меньше вычислительная
         # стоимость и меньше риска нестабильности из-за редких dummy-полей.
-        scores = pd.Series(kb.scores_, index=X_train.columns).replace([np.inf, -np.inf], np.nan)
-        candidates = scores.fillna(-np.inf).nlargest(min(50, len(scores))).index.tolist()
+        candidates = feature_scores.fillna(-np.inf).nlargest(
+            min(50, len(feature_scores))
+        ).index.tolist()
         rfe = RFE(LinearRegression(), n_features_to_select=min(15, len(candidates)), step=.3)
         rfe.fit(X_train[candidates], y_train_reg)
         rfe_list = list(np.asarray(candidates)[rfe.get_support()])
@@ -425,58 +406,17 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
 
     plots: dict[str, Path] = {}
     if make_plots:
-        # Не наследуем тёмный стиль IDE / системные настройки Matplotlib.
-        # rc_context не меняет глобальные настройки для остальных модулей.
-        plot_style = {
-            "figure.facecolor": "white", "axes.facecolor": "white",
-            "savefig.facecolor": "white", "text.color": "#222222",
-            "axes.labelcolor": "#222222", "xtick.color": "#222222",
-            "ytick.color": "#222222", "axes.edgecolor": "#555555",
-            "font.size": 10, "axes.grid": False,
-        }
-        with plt.rc_context(plot_style):
-            missing = X_train_raw.isna().sum().sort_values(ascending=False).head(14)
-            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
-            missing.iloc[::-1].plot.barh(ax=ax, color="#487da8")
-            ax.set_xlabel("Число пропусков в обучающей выборке")
-            ax.set_ylabel("")
-            ax.grid(axis="x", color="#dce1e6", linewidth=.6)
-            ax.set_axisbelow(True)
-            fig.subplots_adjust(left=.30, right=.95, bottom=.09, top=.96)
-            _center_bar_chart(fig, ax)
-            plots["missing"] = output_dir / "01_missing_values.png"
-            _save_plot(fig, plots["missing"])
-
-            top_scores = pd.Series(kb.scores_, index=X_train.columns).replace([np.inf, -np.inf], np.nan)
-            top_scores = top_scores.fillna(0).sort_values(ascending=False).head(14)
-            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
-            top_scores.iloc[::-1].plot.barh(ax=ax, color="#487da8")
-            ax.set_xlabel("Статистика F для связи с ценой продажи")
-            ax.set_ylabel("")
-            ax.grid(axis="x", color="#dce1e6", linewidth=.6)
-            ax.set_axisbelow(True)
-            fig.subplots_adjust(left=.34, right=.95, bottom=.09, top=.96)
-            _center_bar_chart(fig, ax)
-            plots["scores"] = output_dir / "02_feature_selection.png"
-            _save_plot(fig, plots["scores"])
-
-            fig, ax = create_report_figure(figsize=(7, 9.5), facecolor="white")
-            for cls, label, color in (
-                (0, "Цена ниже $200 000", "#3269ab"),
-                (1, "Цена от $200 000", "#cc6a35"),
-            ):
-                filt = (y_train_clf.to_numpy() == cls)
-                ax.scatter(pca_train[filt, 0], pca_train[filt, 1],
-                           label=label, color=color, s=18, alpha=.55)
-            ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} дисперсии)")
-            ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} дисперсии)")
-            ax.legend(loc="best", fontsize=9, frameon=True,
-                      facecolor="white", edgecolor="#bbbbbb")
-            ax.grid(color="#e3e6e9", linewidth=.6)
-            ax.set_axisbelow(True)
-            fig.subplots_adjust(left=.16, right=.95, bottom=.10, top=.96)
-            plots["pca"] = output_dir / "03_pca_preprocessed.png"
-            _save_plot(fig, plots["pca"])
+        # Графические данные готовим здесь, а рисунки строит visualization.py.
+        missing_counts = X_train_raw.isna().sum().sort_values(ascending=False).head(14)
+        top_scores = feature_scores.fillna(0).sort_values(ascending=False).head(14)
+        plots = save_preprocessing_plots(
+            missing_counts=missing_counts,
+            feature_scores=top_scores,
+            pca_points=pca_train,
+            price_classes=y_train_clf.to_numpy(),
+            pca_explained_variance=pca.explained_variance_ratio_,
+            dest=output_dir,
+        )
 
     counts = class_labels.value_counts().sort_index()
     train_change_rows = outlier_changes[outlier_changes["Выборка"] == "train"]
