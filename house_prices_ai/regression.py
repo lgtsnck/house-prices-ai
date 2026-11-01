@@ -290,3 +290,52 @@ def run_regression(raw_path: str | Path = RAW_TRAIN_FILE,
     report_path = out_dir / "lr03_summary.md"
     report_path.write_text(_report(summary, test_metrics, winner, tuning_info), encoding="utf-8")
     return RegressionResult(summary_path, test_path, folds_path, report_path, figures, winner)
+
+def refresh_regression_outputs(
+    raw_path: str | Path = RAW_TRAIN_FILE,
+    processed_dir: str | Path = PROCESSED_DATA_DIR,
+    out_dir: str | Path = OUTPUT_DIR / "regression",
+) -> dict[str, Path]:
+    """Перестроить рисунки и историю MLP, не повторяя кросс-валидацию.
+
+    Используются уже сохранённые CV/OOF результаты. Только MLP повторно
+    обучается на внешней обучающей выборке для получения истории эпох.
+    """
+    from house_prices_ai.visualization import create_regression_figures
+
+    out_dir = Path(out_dir)
+    required = ("cv_clean_summary.csv", "cv_clean_folds.csv", "oof_predictions.csv")
+    for filename in required:
+        path = out_dir / filename
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"Не найден {path}; сначала запусти python main.py regression"
+            )
+
+    cv_summary = pd.read_csv(out_dir / "cv_clean_summary.csv")
+    cv_folds = pd.read_csv(out_dir / "cv_clean_folds.csv")
+    oof = pd.read_csv(out_dir / "oof_predictions.csv")
+    X_train, _, y_train, _ = load_lr02_split(raw_path, processed_dir)
+    if len(oof) != len(y_train):
+        raise ValueError("Число OOF-прогнозов не совпадает с обучающей выборкой")
+    if not np.array_equal(oof["Id"].to_numpy(), X_train.index.to_numpy()):
+        raise ValueError("Порядок OOF Id отличается от сохранённых train_ids")
+
+    print("Обучаем только MLP на обучающей выборке, без повторной CV.")
+    mlp = make_regression_pipeline(X_train, model_catalog()["MLP"])
+    mlp.fit(X_train, y_train)
+    details = save_mlp_training_diagnostics(mlp, out_dir)
+    print(f"MLP: лучшая эпоха {details['best_epoch']} / {details['epochs_run']}")
+
+    history = pd.read_csv(out_dir / "mlp_learning_history.csv")
+    figures = create_regression_figures(
+        cv_summary,
+        cv_folds,
+        y_train.to_numpy(),
+        oof["OOF_Pred"].to_numpy(),
+        out_dir / "figures",
+        history,
+    )
+    print(f"Сформировано рисунков: {len(figures)}")
+    return figures
+
