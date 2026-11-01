@@ -24,9 +24,8 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
 from house_prices_ai.config import OUTPUT_DIR, PROCESSED_DATA_DIR, RANDOM_STATE, RAW_TRAIN_FILE
-from house_prices_ai.evaluation import (
-    create_regression_figures, regression_metrics, save_mlp_training_diagnostics,
-)
+from house_prices_ai.evaluation import regression_metrics, save_mlp_training_diagnostics
+from house_prices_ai.visualization import create_regression_figures
 from house_prices_ai.preprocessing import HouseFeatures, _make_preprocessor
 
 SCORING = {"R2": "r2", "MAE": "neg_mean_absolute_error", "RMSE": "neg_root_mean_squared_error"}
@@ -284,7 +283,7 @@ def run_regression(raw_path: str | Path = RAW_TRAIN_FILE,
                   "OOF_Pred": oof, "Residual": y_train.to_numpy()-oof}).to_csv(
         out_dir / "oof_predictions.csv", index=False)
     figures = (create_regression_figures(summary, individual, y_train, oof,
-                                       out_dir / "figures", trained["MLP"])
+                                       out_dir / "figures", pd.read_csv(out_dir / "mlp_learning_history.csv"))
                if make_plots else {})
 
     tuning_info = tune_xgboost(X_train, y_train, out_dir, tuning_iterations) if tune else None
