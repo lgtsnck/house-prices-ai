@@ -45,7 +45,7 @@ RESULTS = ROOT / "outputs" / "classification"
 required = ["cv_summary.csv", "cv_folds.csv", "oof_models.csv", "mlp_learning_history.csv"]
 missing = [name for name in required if not (RESULTS / name).exists()]
 if missing:
-    raise FileNotFoundError(f"Не найдены результаты {missing}. Запустите python -m house_prices_ai.classification из корня проекта")
+    raise FileNotFoundError(f"Не найдены результаты {missing}. Запустите python main.py classification из корня проекта")
 summary = pd.read_csv(RESULTS / "cv_summary.csv")
 folds = pd.read_csv(RESULTS / "cv_folds.csv")
 oof = pd.read_csv(RESULTS / "oof_models.csv")
@@ -174,7 +174,7 @@ if tuning_file.is_file() and trials_file.is_file():
                            "param_model__learning_rate", "param_model__subsample"] if c in trials]
     display(trials.sort_values("rank_test_score")[columns].head(5))
 else:
-    print("Подбор ещё не выполнялся. Из корня проекта запустите: python -m house_prices_ai.classification --tune-only")
+    print("Подбор ещё не выполнялся. Из корня проекта запустите: python main.py classification --tune-only")
 
 # %% [markdown]
 # Результат подбора нельзя трактовать как независимую оценку качества настроенной модели. Для окончательной проверки полезности подобранных параметров требуется повторная оценка на отдельных валидационных разбиениях либо вложенная кросс-валидация. Внешняя тестовая выборка не должна использоваться для выбора параметров.
