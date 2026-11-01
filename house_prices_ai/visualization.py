@@ -129,7 +129,7 @@ def _render_eda_plots(
     pca_points: np.ndarray | None,
     pca_explained_variance: tuple[float, float] | None,
 ) -> dict[str, Path]:
-    """Построить рисунки ЛР №1 с учётом книжного формата A4.
+    """Построить EDA-рисунки в книжной ориентации A4.
 
     Для 01/02 создаём по 8 диаграмм на страницу; корреляции — на одном
     портретном листе; pairplot — на двух листах. Все иллюстрации книжные.
@@ -138,14 +138,14 @@ def _render_eda_plots(
     result: dict[str, Path] = {}
     columns = list(numeric.columns)
 
-    # 01: гистограммы (5 страниц для 37 признаков).
+    # 01: гистограммы числовых характеристик, до восьми панелей на страницу.
     for p, offset in enumerate(range(0, len(columns), 8)):
         page_columns = columns[offset:offset + 8]
         fig, axes = _sheet_axes(len(page_columns))
         for ax, col in zip(axes, page_columns):
             values = numeric[col].dropna()
             # Дискретные признаки рисуем с целочисленными интервалами,
-            # иначе для признаков вроде GarageCars гистограмма misleading.
+            # иначе интервалы для дискретных признаков (например, GarageCars) будут некорректными.
             bins = 25
             if col in {"GarageCars", "Fireplaces", "FullBath", "HalfBath", "MoSold", "OverallQual", "OverallCond"}:
                 unique_vals = np.sort(values.unique())
@@ -192,11 +192,9 @@ def _render_eda_plots(
 
     # 04: полная корреляционная матрица на одном книжном листе.
     # Подписи остаются техническими: их расшифровка — в Markdown Notebook.
-    corr = correlations
-    # Больше полезной площади листа: увеличиваем матрицу, а не вставляем
-    # растянутую готовую картинку. Все коэффициенты считаются на лету.
+    # Увеличиваем матрицу в макете, не растягивая готовое изображение.
     fig, ax = create_report_figure(figsize=(7.45, 8.25))
-    sns.heatmap(corr, cmap="coolwarm", center=0, vmin=-1, vmax=1,
+    sns.heatmap(correlations, cmap="coolwarm", center=0, vmin=-1, vmax=1,
                 annot=False, square=False, linewidths=.10, linecolor="white",
                 cbar_kws={"shrink": .82, "pad": .012, "fraction": .035,
                           "ticks": [-1, -.5, 0, .5, 1], "format": "%.1f"}, ax=ax)
@@ -230,11 +228,10 @@ def _render_eda_plots(
         _finish_plot(pair.figure, file)
         result[f"pairplot_{p+1:02d}"] = file
 
-    # 06: двумерный PCA только для визуальной разведки данных.
+    # 06: отображение подготовленных координат PCA, без повторных вычислений.
     if pca_points is not None and pca_explained_variance is not None:
-        points = pca_points
         fig, ax = create_report_figure(figsize=(6.6, 8.1))
-        ax.scatter(points[:, 0], points[:, 1], c="#537fab", s=16, alpha=.5)
+        ax.scatter(pca_points[:, 0], pca_points[:, 1], c="#537fab", s=16, alpha=.5)
         ax.set_xlabel(f"PC1 ({pca_explained_variance[0]:.1%} дисперсии)")
         ax.set_ylabel(f"PC2 ({pca_explained_variance[1]:.1%} дисперсии)")
         fig.subplots_adjust(left=.14, right=.96, top=.96, bottom=.12)

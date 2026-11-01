@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 
 from house_prices_ai.eda import _prepare_eda_plot_inputs
-from house_prices_ai.visualization import save_eda_plots
 
 
 class EDARefactorTests(unittest.TestCase):
