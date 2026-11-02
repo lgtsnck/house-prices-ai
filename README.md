@@ -18,11 +18,11 @@ python -m pip install -r requirements.txt
 python -m pip check
 ```
 
-Если PowerShell блокирует активацию, можно запускать `\.venv\Scripts\python.exe` напрямую вместо изменения системной политики выполнения скриптов. В PyCharm выбери интерпретатор `.venv\Scripts\python.exe`.
+Если PowerShell блокирует активацию, можно запускать `\.venv\Scripts\python.exe` напрямую вместо изменения системной политики выполнения скриптов. В PyCharm следует выбрать интерпретатор `.venv\Scripts\python.exe`.
 
-**Исходные данные не входят в репозиторий.** После принятия условий соревнования Kaggle скачай `train.csv` со [страницы данных](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data) и скопируй в `data/raw/train.csv`. Это единственный обязательный внешний CSV. Файлы `test.csv` и `data_description.txt` при необходимости можно положить рядом. Подробнее в [`data/README.md`](data/README.md).
+**Исходные данные не входят в репозиторий.** Для воспроизведения результатов необходимо принять условия соревнования Kaggle, скачать `train.csv` со [страницы данных](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data) и разместить его в `data/raw/train.csv`. Это единственный обязательный внешний CSV. Файлы `test.csv` и `data_description.txt` при необходимости можно положить рядом. Подробнее в [`data/README.md`](data/README.md).
 
-Для проверки установки и работы командного интерфейса выполни
+Для проверки установки и работы командного интерфейса используются следующие команды.
 
 ```powershell
 python main.py info
@@ -73,7 +73,7 @@ python main.py clustering --tsne --dbscan
 
 ## Где посмотреть результаты
 
-**Интерактивное исследование** находится в [`notebooks/`](notebooks/README.md). Открой файлы `.ipynb` в PyCharm или JupyterLab. Для запуска JupyterLab из корня репозитория выполни `python -m jupyterlab`, затем выбери ядро виртуального окружения. Ноутбуки используют уже созданные локальные файлы из `outputs/` и `data/processed/`. Поэтому сначала выполни соответствующие команды `main.py`.
+**Интерактивное исследование** находится в [`notebooks/`](notebooks/README.md). Файлы `.ipynb` можно открыть в PyCharm или JupyterLab. Для запуска JupyterLab из корня репозитория используется команда `python -m jupyterlab`. Затем необходимо выбрать ядро виртуального окружения. Notebook используют локальные файлы из `outputs/` и `data/processed/`, поэтому сначала выполняются соответствующие команды `main.py`.
 
 **Сводные отчёты** создаются в Markdown. Основные файлы приведены ниже.
 
@@ -88,7 +88,7 @@ python main.py clustering --tsne --dbscan
 
 В подпапках `figures/` сохраняются PNG, рядом могут находиться таблицы CSV, модели Joblib и интерактивные объяснения SHAP в HTML. Папка `outputs/` создаётся при выполнении проекта и исключена из Git. Поэтому отсутствие локальных результатов после `git clone` ожидаемо.
 
-**Единая текстовая часть** доступна в [`docs/README.md`](docs/README.md). Она не заменяет вычисления и содержит ссылки на шесть Notebook. Итоговая пояснительная записка DOCX оформляется отдельно.
+**Единое исследование** доступно в [`docs/README.md`](docs/README.md). В документ включены тексты шести разделов, сохранённые таблицы, иллюстрации, выводы и раскрываемые блоки исходного кода. Для воспроизведения экспериментов используются исходные данные и программные модули проекта.
 
 ## Структура каталогов
 
@@ -99,7 +99,7 @@ python main.py clustering --tsne --dbscan
 | [`data/`](data/README.md) | Локальные исходные и подготовленные данные |
 | [`notebooks/`](notebooks/README.md) | Шесть исследовательских Notebook в парных форматах `.ipynb` и `.py` |
 | [`docs/`](docs/README.md) | Объединённое исследование и материалы документации |
-| [`docs/assets/`](docs/assets/README.md) | Отобранные изображения для документации |
+| [`docs/assets/`](docs/assets/README.md) | Иллюстрации, встроенные в единое исследование |
 | [`tests/`](tests/README.md) | Автоматические проверки |
 | [`tools/`](tools/README.md) | Вспомогательные средства сверки изображений и Notebook |
 | [`outputs/`](outputs/README.md) | Локальные результаты запусков, не включаемые в Git |

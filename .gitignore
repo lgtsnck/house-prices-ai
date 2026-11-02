@@ -48,3 +48,8 @@ kaggle.json
 # System files
 .DS_Store
 Thumbs.db
+
+# Track local-folder README files without tracking data
+!data/raw/README.md
+!data/processed/README.md
+!outputs/README.md

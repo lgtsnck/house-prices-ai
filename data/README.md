@@ -9,6 +9,6 @@
 | [`raw/`](raw/README.md) | Исходные файлы Kaggle, прежде всего обязательный `train.csv` |
 | [`processed/`](processed/README.md) | Выборки и признаки после предобработки, которые создаются программой |
 
-Чтобы воспроизвести расчёты, открой [страницу House Prices на Kaggle](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data), прими условия использования и скопируй `train.csv` в `data/raw/train.csv`. Исходные файлы программа не изменяет.
+Для воспроизведения расчётов необходимо открыть [страницу House Prices на Kaggle](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data), принять условия использования и поместить `train.csv` в `data/raw/train.csv`. Исходные файлы программа не изменяет.
 
 `train.csv` содержит известную цену продажи `SalePrice`. Конкурсный `test.csv` не содержит целевую переменную, поэтому в проекте используется собственное воспроизводимое разделение размеченного набора на обучающую и тестовую части. Преобразования обучаются на тренировочных объектах, а к тестовым применяются без повторной настройки.
