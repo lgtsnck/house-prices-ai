@@ -1,4 +1,4 @@
-"""Базовые проверки ЛР №3 на синтетических данных (без Kaggle CSV)."""
+"""Базовые проверки регрессии на синтетических данных без Kaggle CSV."""
 import unittest
 import tempfile
 from pathlib import Path

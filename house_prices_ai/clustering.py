@@ -24,7 +24,7 @@ from house_prices_ai.preprocessing import HouseFeatures, IQRClipper
 from house_prices_ai.regression import load_lr02_split
 from house_prices_ai.visualization import create_clustering_figures
 
-# Осознанно не включаем SalePrice, PriceClass, Id, OHE и несколько почти
+# Для кластеризации исключаем SalePrice, PriceClass, Id, OHE и несколько почти
 # дублирующих друг друга площадей. Это исследовательский выбор признаков.
 CLUSTER_FEATURES = (
     "OverallQual", "OverallCond", "TotalUsefulSF", "TotalBathrooms",
@@ -99,7 +99,7 @@ def select_cluster_count(features: np.ndarray, *, max_k: int = 8,
         labels = km.fit_predict(x)
         if len(set(labels)) < 2:
             continue
-        # Вычисляем silhouette по подвыборке для предсказуемого времени запуска.
+        # Коэффициент силуэта рассчитываем по подвыборке, чтобы ограничить время вычислений.
         sil = silhouette_score(x, labels, sample_size=min(silhouette_sample, len(x)),
                                random_state=seed)
         sizes = np.bincount(labels, minlength=k)
@@ -116,14 +116,14 @@ def select_cluster_count(features: np.ndarray, *, max_k: int = 8,
         raise ValueError("Не удалось получить хотя бы два разных кластера")
     candidates = table.loc[table.MinClusterFraction >= min_fraction]
     if candidates.empty:
-        candidates = table  # явно укажем это ограничение в отчёте
+        candidates = table  # Ограничение отражено в отчёте
     best = candidates.sort_values(["Silhouette", "k"], ascending=[False, True]).iloc[0]
     return table, int(best.k)
 
 
 def describe_clusters(cleaned: pd.DataFrame, labels: np.ndarray,
                       prices: pd.Series, threshold: float = 200_000) -> pd.DataFrame:
-    """Цена применяется ПОСЛЕ построения кластеров, только для описания групп."""
+    """Цены используются только после построения кластеров для описания групп."""
     if len(cleaned) != len(labels) or len(labels) != len(prices):
         raise ValueError("Несовпадение длины характеристик, меток и цен")
     table = cleaned.copy()
@@ -144,7 +144,7 @@ def describe_clusters(cleaned: pd.DataFrame, labels: np.ndarray,
 
 def analyze_dbscan(features: np.ndarray, eps: float = 1.8,
                    min_samples: int = 10) -> tuple[np.ndarray, dict]:
-    """Сравнение по плотности: -1 обозначает шум, один кластер не считается успехом."""
+    """Проверка плотностной кластеризации. Метка -1 обозначает шум. Один кластер не подтверждает разделение на группы."""
     labels = DBSCAN(eps=eps, min_samples=min_samples).fit_predict(features)
     counts = pd.Series(labels).value_counts().sort_index()
     cluster_labels = sorted(v for v in counts.index if v >= 0)
@@ -203,7 +203,7 @@ def run_clustering(*, out_dir: str | Path = OUTPUT_DIR / "clustering",
                    max_k: int = 8, make_plots: bool = True,
                    tsne: bool = False, dbscan: bool = False,
                    dbscan_eps: float = 1.8) -> ClusteringResult:
-    """Полный анализ только на прежних тренировочных Id, без использования test."""
+    """Анализ на ранее выделенной обучающей выборке без использования тестовых записей."""
     load_kw = {}
     if raw_path is not None: load_kw["raw_path"] = raw_path
     if processed_dir is not None: load_kw["processed_dir"] = processed_dir
@@ -242,7 +242,7 @@ def run_clustering(*, out_dir: str | Path = OUTPUT_DIR / "clustering",
     best = table.loc[table.k == k].iloc[0]
     dominant = profile.sort_values("MeanPriceUSD", ascending=False).iloc[0]
     lines = [
-        "# Поиск групп недвижимости методом кластеризации", "",
+        "# 6. Кластеризация недвижимости", "",
         "## Постановка задачи", "",
         f"Исследована структура **{len(raw):,}** объектов из ранее выделенной обучающей выборки. "
         "Внешняя тестовая часть не использовалась.",

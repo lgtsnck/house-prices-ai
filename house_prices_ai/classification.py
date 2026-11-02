@@ -1,4 +1,4 @@
-"""Оценка ценового сегмента недвижимости: CV, сравнение моделей и диагностика.
+"""Классификация недвижимости по ценовому сегменту с оценкой качества моделей.
 
 Все предсказания OOF формируются обучением полного Pipeline на иных строках.
 Внешняя тестовая выборка не используется для сравнения или подбора моделей.
@@ -46,14 +46,14 @@ class ClassificationResult:
 
 
 def build_classification_pipeline(raw_features: pd.DataFrame, estimator) -> Pipeline:
-    """Вся обучаемая предобработка входит в CV и в подбор параметров."""
+    """Все обучаемые преобразования включены в CV и подбор параметров."""
     schema = HouseFeatures().transform(raw_features)
     encoder = _make_preprocessor(schema)
     return Pipeline([("preprocessing", encoder), ("model", clone(estimator))])
 
 
 def starter_models() -> dict[str, object]:
-    """Единый каталог исходных конфигураций, без подбора по внешнему тесту."""
+    """Каталог исходных конфигураций без настройки по тестовой выборке."""
     return {
         "DummyClassifier": DummyClassifier(strategy="most_frequent"),
         "LogisticRegression": LogisticRegression(max_iter=4000, random_state=RANDOM_STATE),
@@ -170,7 +170,7 @@ def prepare_classification_plot_data(
 
 
 def save_mlp_history(model: Pipeline, output_dir: Path) -> tuple[pd.DataFrame, dict]:
-    """История отдельного fit на полном внешнем train, не история CV."""
+    """История отдельного обучения на всей тренировочной части, а не история CV."""
     mlp: MLPClassifier = model.named_steps["model"]
     losses = np.asarray(mlp.loss_curve_, dtype=float)
     scores = np.asarray(mlp.validation_scores_, dtype=float)
@@ -202,7 +202,7 @@ def save_mlp_history(model: Pipeline, output_dir: Path) -> tuple[pd.DataFrame, d
 
 def tune_xgboost(X: pd.DataFrame, y: pd.Series, output_dir: Path,
                  iterations: int = 8) -> dict:
-    """Ограниченный поиск по F1: 3-fold CV, внешний test не используется.
+    """Подбор по F1 с трёхкратной CV без использования тестовой выборки.
 
     Результат поиска не является несмещённой оценкой оптимизированной модели.
     """
@@ -245,7 +245,7 @@ def _report(X, y, summary, oof, mlp_info, tuning=None) -> str:
     best = summary.iloc[0]
     cols = ["Model", "Accuracy_mean", "Precision_mean", "Recall_mean", "F1_mean", "ROC_AUC_mean"]
     lines = [
-        "# Классификация ценового сегмента недвижимости", "",
+        "# 4. Классификация ценового сегмента недвижимости", "",
         f"Для оценки ценового сегмента использованы {len(X):,} исходных обучающих наблюдений. "
         f"Положительный класс соответствует цене сделки от ${PRICE_THRESHOLD:,}.",
         f"Доля положительного класса составляет {y.mean():.1%}. Признаки целевой цены и идентификаторы не используются.", "",
@@ -311,13 +311,13 @@ def run_classification(output_dir: str | Path = OUTPUT_DIR / "classification",
     summary.to_csv(summary_path, index=False)
     fold_df.to_csv(folds_path, index=False)
     oof.to_csv(oof_path, index=False)
-    # Сохраняем старый формат OOF для обратной совместимости.
+    # Сохраняем исходный формат OOF для обратной совместимости.
     oof[["ActualClass", "PredictedClass__LogisticRegression", "ProbabilityClass1__LogisticRegression"]].rename(
         columns={"PredictedClass__LogisticRegression": "PredictedClass",
                  "ProbabilityClass1__LogisticRegression": "ProbabilityClass1"}
     ).to_csv(out / "oof_logistic.csv", index=False)
 
-    # Финальный fit кандидата на всем внешнем train. Внешний test не трогаем.
+    # Кандидат обучается на всей тренировочной части без использования тестовой выборки.
     winner = str(summary.iloc[0]["Model"])
     best_pipe = build_classification_pipeline(X, starter_models()[winner])
     best_pipe.fit(X, y)
@@ -325,7 +325,7 @@ def run_classification(output_dir: str | Path = OUTPUT_DIR / "classification",
     (out / "best_model.json").write_text(
         json.dumps({"model": winner, "selection_metric": "mean 5-fold F1",
                     "external_test_used": False}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    # MLP: отдельное полное обучение для графика, независимо от CV.
+    # Историю MLP получаем при отдельном обучении на всей тренировочной части.
     mlp = build_classification_pipeline(X, starter_models()["MLPClassifier"])
     mlp.fit(X, y)
     mlp_history, mlp_info = save_mlp_history(mlp, out)

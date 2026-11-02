@@ -135,7 +135,7 @@ class PreprocessingTests(unittest.TestCase):
             self.assertEqual(loaded.transform(fresh).shape[1], train.shape[1])
             self.assertTrue((base / "output" / "preprocessing_summary.md").exists())
             assert (base / "output" / "outlier_changes.csv").exists()
-            # Проверяем данные до StandardScaler: рассчитанный суммарный признак
+            # Проверяем данные до StandardScaler. рассчитанный суммарный признак
             # обязан совпадать с суммой уже ограниченных площадей.
             numerics = loaded.named_steps["encode"].named_transformers_["num"]
             imputed = numerics.named_steps["impute"].transform(

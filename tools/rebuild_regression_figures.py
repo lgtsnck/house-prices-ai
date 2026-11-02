@@ -35,13 +35,13 @@ def main() -> int:
         sys.path.insert(0, str(project_root))
     from house_prices_ai import evaluation, visualization
     if hasattr(visualization, 'create_regression_figures'):
-        # После переноса — только подготовленные числовые данные.
+        # После переноса используются только подготовленные числовые данные.
         plots = visualization.create_regression_figures(
             summary, folds, oof['SalePrice'].to_numpy(),
             oof['OOF_Pred'].to_numpy(), args.output, history,
         )
     else:
-        # До переноса — адаптер истории для старого интерфейса.
+        # До переноса использовался адаптер истории для прежнего интерфейса.
         reg = SimpleNamespace(
             loss_curve_=history['Training_Loss'].to_numpy(),
             validation_scores_=history['Validation_R2'].to_numpy(),

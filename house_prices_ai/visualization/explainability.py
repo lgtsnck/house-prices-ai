@@ -1,4 +1,4 @@
-"""SHAP and model feature-importance visualizations."""
+"""Графики SHAP и важности признаков моделей."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,7 +10,7 @@ import pandas as pd
 from .common import create_a4_figure, save_shap_a4_figure
 
 
-# Построение объяснений; их вычисление выполняет explainability.py.
+# Объяснения вычисляются в explainability.py. Здесь строятся графики.
 def _save_explainability_figure(fig, path: Path) -> None:
     """A4 с вписыванием SHAP и длинных подписей без обрезки."""
     save_shap_a4_figure(fig, path)

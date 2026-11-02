@@ -51,7 +51,7 @@ class HouseFeatures(BaseEstimator, TransformerMixin):
             raise ValueError("В матрицу признаков попали Id или SalePrice")
         if "MSSubClass" in df:
             df["MSSubClass"] = df["MSSubClass"].astype("string").fillna("Неизвестно")
-        # Пропуск у перечисленных категорий — отсутствие соответствующего объекта.
+        # Пропуск в указанных категориях означает отсутствие соответствующего объекта.
         for col in ABSENCE_COLUMNS:
             if col in df:
                 df[col] = df[col].fillna("Отсутствует")
@@ -96,7 +96,7 @@ class IQRClipper(BaseEstimator, TransformerMixin):
             i = self.numeric_columns.index(name)
             q1, q3 = np.quantile(x[:, i], [0.25, 0.75])
             if np.isfinite(q1) and np.isfinite(q3) and q3 > q1:
-                # Сохраняем нулевую площадь отсутствующих элементов.
+                # Нулевую площадь отсутствующих элементов сохраняем без изменений.
                 # Для них ограничиваем только верхний хвост распределения.
                 if name not in ZERO_IS_ABSENCE_COLUMNS:
                     self.lower_[i] = q1 - self.factor * (q3 - q1)
@@ -267,7 +267,7 @@ def _evaluate_vif(train_processed: pd.DataFrame, *,
             coeff, *_ = np.linalg.lstsq(other, z[:, i], rcond=1e-12)
             residual = z[:, i] - other @ coeff
             fraction = float(np.dot(residual, residual) / np.dot(z[:, i], z[:, i]))
-            # Относительный остаток почти нулевой: точная зависимость в
+            # Практически нулевой относительный остаток указывает на точную зависимость в
             # пределах численной точности вычислений.
             vif = np.inf if fraction <= 1e-12 else 1.0 / fraction
         if np.isinf(vif):
@@ -324,7 +324,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
     output_dir.mkdir(parents=True, exist_ok=True)
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # Диагностика показывает фактические изменения в каждой выборке, без
+    # Диагностика отражает изменения отдельно в каждой выборке без
     # повторного обучения IQR на тестовых объектах.
     outlier_changes = _outlier_change_summary(transformer, {
         "train": X_train_raw, "test": X_test_raw,
@@ -345,7 +345,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
     joblib.dump(transformer, output_dir / "preprocessing_pipeline.joblib")
     pd.DataFrame({"Признак": cols}).to_csv(output_dir / "feature_names.csv", index=False)
 
-    # Отбор признаков проводится на train, а не на test.
+    # Признаки отбираются только по тренировочным данным.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         kb = SelectKBest(score_func=f_regression, k=min(20, X_train.shape[1]))
@@ -362,7 +362,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
     vif_info = empty_vif_info.copy()
     vif_reduced_info = empty_vif_info.copy()
     if run_diagnostics:
-        # RFE на 50 наиболее значимых по F-признаках: меньше вычислительная
+        # RFE применяется к 50 наиболее значимым по F-критерию признакам. Это снижает вычислительную
         # стоимость и меньше риска нестабильности из-за редких dummy-полей.
         candidates = feature_scores.fillna(-np.inf).nlargest(
             min(50, len(feature_scores))
@@ -393,7 +393,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
 
     # KNN как альтернативный метод восстановления числовых признаков.
     # Стратегию следует сравнивать по качеству моделей, а не по самой
-    # возможности заполнить пустые ячейки. Производственный pipeline — median.
+    # возможности заполнить пустые ячейки. Основной конвейер использует медиану.
     engineered_train = HouseFeatures().transform(X_train_raw)
     numerical_raw = engineered_train.select_dtypes(include=np.number)
     knn_columns = [c for c in ("LotFrontage", "MasVnrArea", "GarageYrBlt") if c in numerical_raw]
@@ -406,7 +406,7 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
 
     plots: dict[str, Path] = {}
     if make_plots:
-        # Графические данные готовим здесь, а рисунки строит visualization.py.
+        # Здесь подготавливаются данные для графиков. Рисунки строятся в пакете visualization.
         missing_counts = X_train_raw.isna().sum().sort_values(ascending=False).head(14)
         top_scores = feature_scores.fillna(0).sort_values(ascending=False).head(14)
         plots = save_preprocessing_plots(
@@ -432,29 +432,29 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
     vif_reduced_high = int((vif_reduced["VIF"] > 10).sum()) if not vif_reduced.empty else 0
     vif_reduced_infinite = int(np.isinf(vif_reduced["VIF"].to_numpy(dtype=float)).sum()) if not vif_reduced.empty else 0
     report_lines = [
-        "# Предобработка и инженерия признаков House Prices", "",
+        "# 2. Предобработка данных и инженерия признаков", "",
         "## Исходные данные и разделение", "",
         f"- Всего объектов: **{len(raw)}**.",
-        f"- Обучающая выборка: **{len(train_idx)}**; тестовая: **{len(test_idx)}**.",
+        f"- Обучающая выборка **{len(train_idx)}** объектов. Тестовая выборка **{len(test_idx)}** объектов.",
         f"- Исходных пропущенных ячеек: **{int(X.isna().sum().sum())}** (без Id и SalePrice).",
         f"- Итоговых признаков после кодирования: **{X_train.shape[1]}**.",
-        f"- Ценовые классы: ниже $200 000 — **{int(counts[0])}**, от $200 000 — **{int(counts[1])}**.",
+        f"- Ценовые классы. Ниже 200 000 USD - **{int(counts[0])}** объектов, от 200 000 USD - **{int(counts[1])}**.",
         "- Разделение фиксировано `random_state=42` и стратифицировано по ценовой категории.", "",
         "## Принятая стратегия", "",
         "Категориальные пропуски, обозначающие отсутствие объекта (например, гаража или бассейна),",
-        "выделяются в отдельную категорию. Остальные пропуски заполняются по обучающей выборке:",
+        "выделяются в отдельную категорию. Остальные пропуски заполняются по статистикам обучающей выборки.",
         "медианой для числовых признаков и константой для категориальных. Для некоторых непрерывных",
         "признаков значения за пределами 1,5 IQR ограничиваются границами, рассчитанными по train.",
         "Категориальные признаки кодируются One-Hot Encoding, числовые стандартизируются.",
         "", "## Обработка выбросов", "",
         f"После заполнения пропусков методом IQR скорректировано **{train_changed} значений в обучающей**",
         f"и **{test_changed} значений в тестовой выборке**. Это количество ячеек, а не объектов.",
-        "Чаще всего изменения затрагивали: " + changed_description + ".",
+        "Чаще всего изменения затрагивали " + changed_description + ".",
         "Подробные границы, минимумы, максимумы и доли приведены в `outlier_changes.csv`.",
-        "Границы были подобраны только по обучающей части; на тестовой использованы без переобучения.",
-        "Отсутствие подвала, гаража или второго этажа сохраняется как нулевая площадь;",
+        "Границы определены только по обучающей части и применены к тестовой без переобучения.",
+        "Отсутствие подвала, гаража или второго этажа по-прежнему обозначается нулевой площадью.",
         "для таких признаков IQR ограничивает только чрезмерно большие значения.",
-        "Ограничение экстремальных площадей — исследовательское решение; его влияние на прогнозы",
+        "Ограничение экстремальных площадей является исследовательским решением. Его влияние на прогнозы",
         "нужно будет сравнить с вариантом без ограничений.", "",
         "В качестве альтернативы рассмотрено KNN-заполнение числовых признаков, но его пользу",
         "для качества прогнозов предстоит проверить при обучении моделей.", "",
@@ -466,27 +466,27 @@ def run_preprocessing(data_path: str | Path = RAW_TRAIN_FILE,
         "`TotalBsmtSF` (площадь подвала), `1stFlrSF` (площадь первого этажа)",
         "и `2ndFlrSF` (площадь второго этажа) до масштабирования признаков.", "",
         "## Отбор признаков и снижение размерности", "",
-        "**SelectKBest** (до 20 признаков): " + ", ".join(kbest[:10]) + ".", "",
+        "**SelectKBest** (до 20 признаков) - " + ", ".join(kbest[:10]) + ".", "",
         "**RFE**: " + (", ".join(rfe_list[:10]) if rfe_list else "не выполнялся в ускоренном режиме") + ".", "",
         f"Две компоненты PCA объясняют **{sum(pca.explained_variance_ratio_):.1%}** дисперсии признаков.",
-        "PCA построен исключительно по обучающей выборке; тестовые объекты только преобразуются.", "",
-        "**VIF. Полный набор:** рассматриваются 14 основных и производных числовых характеристик.",
+        "PCA обучен только на тренировочной выборке. Тестовые объекты лишь преобразуются.", "",
+        "**VIF. Полный набор** включает 14 основных и производных числовых характеристик.",
         f"Матрица имеет ранг {vif_info['Ранг']} при {vif_info['Признаков']} признаках.",
         f"VIF выше 10 у {vif_high} признаков, в том числе бесконечный у {vif_infinite}.",
         "Точная зависимость, в частности, обусловлена тем, что суммарная площадь",
         "равна сумме площадей подвала, первого и второго этажей.",
-        "**VIF. Сокращённый набор:** только для диагностики исключены",
+        "**VIF. Сокращённый набор** построен после исключения признаков только для диагностики. Исключены",
         "`TotalUsefulSF` (суммарная площадь), `PropertyAgeAtSale` (возраст при продаже)",
         "и `YearsSinceRemodel` (лет после реконструкции).",
         f"Матрица имеет ранг {vif_reduced_info['Ранг']} при {vif_reduced_info['Признаков']} признаках.",
         f"VIF выше 10 у {vif_reduced_high} признаков, бесконечный у {vif_reduced_infinite}.",
         "Точные значения приведены в `vif.csv` и `vif_reduced.csv`,",
-        "а сведения о ранге — в `vif_diagnostics.csv`.",
+        "Сведения о ранге находятся в `vif_diagnostics.csv`.",
         "Это сравнение показывает эффект взаимозависимых признаков, но не доказывает",
         "улучшение качества модели. В итоговых матрицах никакие признаки не удалены.", "",
         "## Выходные данные", "",
         "Числовые матрицы и целевые переменные сохранены в `data/processed/`,",
-        "а обученный pipeline — в `outputs/preprocessing/preprocessing_pipeline.joblib`.",
+        "Обученный pipeline находится в `outputs/preprocessing/preprocessing_pipeline.joblib`.",
         "Регрессия и классификация используют одинаковые строки и входные признаки.",
         "Все обучаемые преобразования были настроены только по тренировочным строкам.", "",
     ]

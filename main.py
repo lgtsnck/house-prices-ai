@@ -1,4 +1,4 @@
-"""Единая точка входа House Prices AI: все этапы из одного CLI."""
+"""Единая точка входа House Prices AI для всех этапов исследования."""
 from __future__ import annotations
 
 import argparse
