@@ -3,7 +3,6 @@ import unittest
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
-import json
 import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyRegressor

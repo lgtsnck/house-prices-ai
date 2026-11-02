@@ -3,7 +3,6 @@ import ast
 import inspect
 import tempfile
 import unittest
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageChops
-from pandas.api.types import is_float_dtype, is_integer_dtype, is_numeric_dtype
+from pandas.api.types import is_integer_dtype, is_numeric_dtype
 
 
 RTOL = 1e-12

@@ -1,12 +1,32 @@
-# Зависимости для анализа и подготовки данных, а также Jupyter Notebook.
-# XGBoost, SHAP и библиотеку для нейросетей добавим при выполнении следующих работ.
+# House Prices AI
+# Python 3.13 | Windows x64
+
+# Data analysis
 numpy>=2.1,<3
 pandas>=2.2,<3
-matplotlib>=3.9,<4
+scipy>=1.14,<2
+
+# Visualization
+matplotlib>=3.10,<4
 seaborn>=0.13,<0.15
+Pillow>=11,<13
+
+# Machine learning
 scikit-learn>=1.6,<2
+xgboost>=3.0,<4
+joblib>=1.4,<2
+
+# Model explainability
+shap>=0.50,<1
+
+# Jupyter and notebooks
+ipython>=9,<10
 ipykernel>=6.29,<8
 jupyterlab>=4.3,<5
 jupytext>=1.16,<2
-statsmodels>=0.14,<1
-joblib>=1.4,<2
+nbformat>=5.10,<6
+nbclient>=0.10,<1
+ipywidgets>=8.1,<9
+
+# Static analysis
+ruff>=0.17,<1
