@@ -3,13 +3,13 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 
+from house_prices_ai.visualization import create_clustering_figures
 from house_prices_ai.clustering import (
-    CLUSTER_FEATURES, analyze_dbscan, describe_clusters, make_figures,
+    CLUSTER_FEATURES, analyze_dbscan, describe_clusters, prepare_clustering_plot_data,
     prepare_features, select_cluster_count,
 )
 
@@ -68,8 +68,10 @@ class ClusteringTests(unittest.TestCase):
         self.assertEqual(len(dlabels), len(x))
         self.assertGreaterEqual(stat["noise_fraction"],0)
         with tempfile.TemporaryDirectory() as temp:
-            figures, pca = make_figures(x, clean, labs, prices, table, k, Path(temp),
-                                        dbscan_labels=dlabels)
+            plot_data, pca = prepare_clustering_plot_data(
+                x, labs, prices, table, k, dbscan_labels=dlabels
+            )
+            figures = create_clustering_figures(plot_data, Path(temp))
             self.assertEqual(len(figures), 7)
             self.assertTrue(all(path.exists() and path.stat().st_size > 0 for path in figures.values()))
             self.assertEqual(len(pca.explained_variance_ratio_),2)

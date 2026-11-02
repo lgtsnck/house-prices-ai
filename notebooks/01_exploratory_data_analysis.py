@@ -32,7 +32,7 @@
 #
 
 # %%
-from IPython.display import display, Image, Markdown
+from IPython.display import display, Image
 from pathlib import Path
 import sys
 

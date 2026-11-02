@@ -25,13 +25,40 @@
 
 # %%
 from pathlib import Path
+import sys
 import pandas as pd
 from IPython.display import Image, display
-from house_prices_ai.config import RAW_TRAIN_FILE, OUTPUT_DIR, PROCESSED_DATA_DIR
+
+# Определяем корень проекта независимо от каталога запуска.
+ROOT = next(
+    (
+        path for path in (Path.cwd(), Path.cwd().parent)
+        if (path / "house_prices_ai").is_dir()
+    ),
+    None
+)
+
+if ROOT is None:
+    raise RuntimeError(
+        "Не найден корень проекта House Prices AI"
+    )
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from house_prices_ai.config import (
+    RAW_TRAIN_FILE,
+    OUTPUT_DIR,
+    PROCESSED_DATA_DIR,
+)
 from house_prices_ai.data_loader import load_training_data
-from house_prices_ai.preprocessing import run_preprocessing, CLASS_THRESHOLD
+from house_prices_ai.preprocessing import (
+    run_preprocessing,
+    CLASS_THRESHOLD,
+)
 
 df = load_training_data(RAW_TRAIN_FILE)
+
 print(f"Объектов: {len(df)}. Столбцов: {df.shape[1]}")
 print(f"Пропущенных ячеек: {int(df.isna().sum().sum())}")
 

@@ -7,8 +7,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
 
-from house_prices_ai.config import OUTPUT_DIR, RAW_TRAIN_FILE
+from house_prices_ai.config import OUTPUT_DIR, RAW_TRAIN_FILE, RANDOM_STATE
 from house_prices_ai.data_dictionary import FIELD_DESCRIPTIONS
 from house_prices_ai.data_loader import load_training_data
 from house_prices_ai.visualization import save_eda_plots
@@ -79,6 +82,61 @@ def _correlated_pairs(data: pd.DataFrame, limit: float = 0.8) -> pd.DataFrame:
     return pd.DataFrame(pairs, columns=["Признак A", "Признак B", "Корреляция r"]).sort_values(
         "Корреляция r", key=lambda values: values.abs(), ascending=False
     ).reset_index(drop=True)
+
+
+
+@dataclass(frozen=True)
+class EDAPlotInputs:
+    """Численные результаты подготовки диаграмм; не создаёт фигур."""
+
+    numeric: pd.DataFrame
+    correlations: pd.DataFrame
+    pairplot_samples: tuple[pd.DataFrame, ...]
+    pca_points: np.ndarray | None
+    pca_explained_variance: tuple[float, float] | None
+
+
+def _prepare_eda_plot_inputs(data: pd.DataFrame) -> EDAPlotInputs:
+    """Подготовить данные для EDA-рисунков, не используя Matplotlib/Seaborn.
+
+    PCA предназначена только для описательной проекции исходной выборки,
+    а не для обучения или проверки прогнозных моделей.
+    """
+    numeric = data.select_dtypes(include=np.number).drop(columns=["Id"], errors="ignore")
+    numeric = numeric.loc[:, numeric.notna().any()]
+    if "SalePrice" not in numeric.columns:
+        raise ValueError("Нет числовой целевой переменной SalePrice")
+    correlations = numeric.corr()
+
+    # Сохраняем те же пять признаков и детерминированные подвыборки до 400 строк.
+    target_corr = correlations["SalePrice"].drop("SalePrice").abs().sort_values(ascending=False)
+    important = target_corr.index[: min(5, len(target_corr))].tolist()
+    groups = (important[:3], important[3:])
+    samples = []
+    for group in groups:
+        if not group:
+            continue
+        subset = data[group + ["SalePrice"]].dropna()
+        if len(subset) > 400:
+            subset = subset.sample(n=400, random_state=RANDOM_STATE)
+        samples.append(subset)
+
+    points = None
+    explained = None
+    pca_features = numeric.drop(columns=["SalePrice"], errors="ignore")
+    pca_features = pca_features.loc[:, pca_features.nunique(dropna=True) > 1]
+    if pca_features.shape[1] >= 2:
+        imputed = SimpleImputer(strategy="median").fit_transform(pca_features)
+        transformed = StandardScaler().fit_transform(imputed)
+        pca = PCA(n_components=2, random_state=RANDOM_STATE)
+        points = pca.fit_transform(transformed)
+        explained = tuple(float(v) for v in pca.explained_variance_ratio_)
+
+    return EDAPlotInputs(
+        numeric=numeric, correlations=correlations,
+        pairplot_samples=tuple(samples),
+        pca_points=points, pca_explained_variance=explained,
+    )
 
 
 def _format_report(result: EDAResult) -> str:
@@ -190,7 +248,18 @@ def run_eda(
         "Количество": counts.to_numpy(),
         "Доля, %": (counts.to_numpy() / len(df) * 100).round(1),
     })
-    plots = save_eda_plots(df, output_dir, price_threshold=HIGH_PRICE_THRESHOLD) if make_plots else {}
+    if make_plots:
+        plot_inputs = _prepare_eda_plot_inputs(df)
+        plots = save_eda_plots(
+            plot_inputs.numeric, output_dir,
+            price_threshold=HIGH_PRICE_THRESHOLD,
+            correlations=plot_inputs.correlations,
+            pairplot_samples=plot_inputs.pairplot_samples,
+            pca_points=plot_inputs.pca_points,
+            pca_explained_variance=plot_inputs.pca_explained_variance,
+        )
+    else:
+        plots = {}
     result = EDAResult(
         observations=len(df),
         columns=len(df.columns),

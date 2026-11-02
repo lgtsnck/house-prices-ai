@@ -55,7 +55,7 @@ required = ["importance_regression_xgboost.csv", "importance_classification_xgbo
             "local_regression.json", "local_classification.json"]
 missing = [name for name in required if not (RESULTS / name).is_file()]
 if missing:
-    raise FileNotFoundError(f"Не найдены результаты {missing}. Сначала выполните python -m house_prices_ai.explainability")
+    raise FileNotFoundError(f"Не найдены результаты {missing}. Сначала выполните python main.py explainability")
 
 local_reg = json.loads((RESULTS / "local_regression.json").read_text(encoding="utf-8"))
 local_clf = json.loads((RESULTS / "local_classification.json").read_text(encoding="utf-8"))
@@ -241,7 +241,7 @@ if extra.exists():
     display(Image(filename=str(extra)))
     display(pd.read_csv(RESULTS / "shap_compare_rf_xgb_regression.csv").head(12))
 else:
-    print("Дополнительный анализ не выполнялся. Команда: python -m house_prices_ai.explainability --compare-rf-shap")
+    print("Дополнительный анализ не выполнялся. Команда: python main.py explainability --compare-rf-shap")
 
 # %% [markdown]
 # Если рисунок 5.9 построен, он показывает среднюю величину модельных SHAP-вкладов для Random Forest и XGBoost при регрессии. Различия отражают способы использования признаков конкретными моделями, но сами по себе не объясняют различия их точности и не доказывают причинную значимость признаков.

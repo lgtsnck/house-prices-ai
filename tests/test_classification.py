@@ -9,9 +9,10 @@ import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 
+from house_prices_ai.visualization import create_classification_figures
 from house_prices_ai.classification import (
     build_classification_pipeline, compare_classifiers,
-    create_classification_figures, save_mlp_history,
+    prepare_classification_plot_data, save_mlp_history,
     starter_models, tune_xgboost,
 )
 
@@ -77,7 +78,8 @@ class ClassificationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             history, details = save_mlp_history(mlp, root)
-            figures = create_classification_figures(self.y, oof, summary,
+            plot_data = prepare_classification_plot_data(self.y, oof, summary)
+            figures = create_classification_figures(plot_data, summary,
                                                     root / "figures", history, details)
             self.assertEqual(len(figures), 6)
             self.assertTrue(all(path.exists() and path.stat().st_size > 0

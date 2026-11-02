@@ -1,23 +1,15 @@
-"""Визуализация результатов EDA для ЛР №1 (файлы остаются локально)."""
-
+"""Exploratory data analysis charts."""
 from __future__ import annotations
 
-from pathlib import Path
 from math import ceil
+from pathlib import Path
 
-from matplotlib.transforms import Bbox
-
-import matplotlib
-matplotlib.use("Agg")  # Не требовать открытого окна для командного запуска.
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.decomposition import PCA
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
 
-from house_prices_ai.config import RANDOM_STATE
+from .common import create_report_figure, save_a4_figure
 
 
 # Краткие подписи к исходным названиям полей. Смысл признаков
@@ -51,34 +43,25 @@ def _plot_title(feature: str) -> str:
 
 
 def _finish_plot(fig: plt.Figure, path: Path, *, dpi: int = 180) -> None:
-    """Сохранить рисунок с одинаковыми внешними полями и книжной ориентацией.
+    """Сохранить страницу EDA, сохранив поля и книжную ориентацию.
 
-    Реальную область надписей и графиков измеряем после отрисовки, чтобы
-    не оставлять пустые строки сетки и не обрезать длинные подписи/легенды.
-    Формат A4 задаётся в документе при вставке, а PNG сохраняет пропорции.
+    Ориентация контролируется здесь, а не в общем save_a4_figure:
+    строгая проверка последнего остаётся полезной для остальных модулей.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fig.canvas.draw()
-    bbox = fig.get_tightbbox(fig.canvas.get_renderer())  # Координаты в дюймах.
-
-    padding = 0.18  # Одинаковый отступ от крайних видимых элементов.
-    left, bottom = bbox.x0 - padding, bbox.y0 - padding
-    right, top = bbox.x1 + padding, bbox.y1 + padding
-    width = right - left
-    height = top - bottom
-    # Некоторые компактные рисунки почти квадратные. Добавляем белое поле
-    # поровну сверху и снизу, чтобы все файлы оставались книжными.
-    min_height = width * 1.06
-    if height < min_height:
-        extra = (min_height - height) / 2
-        bottom -= extra
-        top += extra
-
-    # Используем явный bbox: в отличие от сохранения полной фигуры,
-    # на страницах с 5 признаками не возникает огромного белого подвала.
-    fig.savefig(path, dpi=dpi, facecolor="white", pad_inches=0,
-                bbox_inches=Bbox.from_extents(left, bottom, right, top))
-    plt.close(fig)
+    width, height = (float(v) for v in fig.get_size_inches())
+    if width >= height:
+        # В EDA все страницы должны быть книжными. Исправляем только
+        # неожиданно альбомный или квадратный холст, а не макет осей.
+        if width > height:
+            new_width, new_height = height, width
+        else:
+            new_width, new_height = width, width * (11.69 / 8.27)
+        fig.set_size_inches(new_width, new_height, forward=False)
+        print(
+            f"EDA: исправлена ориентация {path.name}: "
+            f"{width:.2f}×{height:.2f} → {new_width:.2f}×{new_height:.2f} дюймов"
+        )
+    save_a4_figure(fig, path, dpi=dpi, bbox_inches=None)
 
 
 def _sheet_axes(count: int) -> tuple[plt.Figure, np.ndarray]:
@@ -87,7 +70,7 @@ def _sheet_axes(count: int) -> tuple[plt.Figure, np.ndarray]:
         raise ValueError("Количество панелей должно быть от 1 до 8")
     rows = ceil(count / 2)
     height = 0.70 + 2.13 * rows
-    fig, axes = plt.subplots(rows, 2, figsize=(6.6, height), squeeze=False)
+    fig, axes = create_report_figure(rows, 2, figsize=(6.6, height), squeeze=False)
     fig.subplots_adjust(left=.15, right=.955, top=.955, bottom=.065,
                         hspace=.82, wspace=.44)
     flat = axes.reshape(-1)
@@ -119,29 +102,47 @@ def _draw_boxplot(ax: plt.Axes, values: np.ndarray) -> dict:
     )
 
 
-def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> dict[str, Path]:
-    """Построить рисунки ЛР №1 с учётом книжного формата A4.
+def save_eda_plots(
+    numeric: pd.DataFrame, dest: Path, *, price_threshold: int,
+    correlations: pd.DataFrame,
+    pairplot_samples: tuple[pd.DataFrame, ...],
+    pca_points: np.ndarray | None,
+    pca_explained_variance: tuple[float, float] | None,
+) -> dict[str, Path]:
+    """Нарисовать EDA, используя исключительно подготовленные аналитические данные."""
+    # Контекст вместо глобального sns.set_theme: настройки других этапов не меняем.
+    with sns.axes_style("whitegrid"), sns.plotting_context("notebook", font_scale=0.85):
+        return _render_eda_plots(
+            numeric, dest, price_threshold=price_threshold,
+            correlations=correlations, pairplot_samples=pairplot_samples,
+            pca_points=pca_points, pca_explained_variance=pca_explained_variance,
+        )
+
+
+def _render_eda_plots(
+    numeric: pd.DataFrame, dest: Path, *, price_threshold: int,
+    correlations: pd.DataFrame,
+    pairplot_samples: tuple[pd.DataFrame, ...],
+    pca_points: np.ndarray | None,
+    pca_explained_variance: tuple[float, float] | None,
+) -> dict[str, Path]:
+    """Построить EDA-рисунки в книжной ориентации A4.
 
     Для 01/02 создаём по 8 диаграмм на страницу; корреляции — на одном
     портретном листе; pairplot — на двух листах. Все иллюстрации книжные.
     """
     dest.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid", font_scale=0.85)
-    numeric = data.select_dtypes(include=np.number).drop(columns=["Id"], errors="ignore")
-    numeric = numeric.loc[:, numeric.notna().any()]
-    if "SalePrice" not in numeric.columns:
-        raise ValueError("Нет числовой целевой переменной SalePrice")
     result: dict[str, Path] = {}
     columns = list(numeric.columns)
 
-    # 01: гистограммы (5 страниц для 37 признаков).
+    # 01: гистограммы числовых характеристик, до восьми панелей на страницу.
     for p, offset in enumerate(range(0, len(columns), 8)):
         page_columns = columns[offset:offset + 8]
         fig, axes = _sheet_axes(len(page_columns))
         for ax, col in zip(axes, page_columns):
             values = numeric[col].dropna()
             # Дискретные признаки рисуем с целочисленными интервалами,
-            # иначе для признаков вроде GarageCars гистограмма misleading.
+            # иначе интервалы для дискретных признаков (например, GarageCars) будут некорректными.
             bins = 25
             if col in {"GarageCars", "Fireplaces", "FullBath", "HalfBath", "MoSold", "OverallQual", "OverallCond"}:
                 unique_vals = np.sort(values.unique())
@@ -174,8 +175,8 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         result[f"boxplots_{p+1:02d}"] = file
 
     # 03: ценовая цель. На весь рисунок оставляем только аналитические подписи.
-    fig, ax = plt.subplots(figsize=(6.6, 8.2))
-    sns.histplot(data=data, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
+    fig, ax = create_report_figure(figsize=(6.6, 8.2))
+    sns.histplot(data=numeric, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
     ax.axvline(price_threshold, linestyle="--", color="#b76555",
                label=f"Порог класса: ${price_threshold:,}")
     ax.set_xlabel("Цена продажи, доллары")
@@ -188,11 +189,9 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
 
     # 04: полная корреляционная матрица на одном книжном листе.
     # Подписи остаются техническими: их расшифровка — в Markdown Notebook.
-    corr = numeric.corr()
-    # Больше полезной площади листа: увеличиваем матрицу, а не вставляем
-    # растянутую готовую картинку. Все коэффициенты считаются на лету.
-    fig, ax = plt.subplots(figsize=(7.45, 8.25))
-    sns.heatmap(corr, cmap="coolwarm", center=0, vmin=-1, vmax=1,
+    # Увеличиваем матрицу в макете, не растягивая готовое изображение.
+    fig, ax = create_report_figure(figsize=(7.45, 8.25))
+    sns.heatmap(correlations, cmap="coolwarm", center=0, vmin=-1, vmax=1,
                 annot=False, square=False, linewidths=.10, linecolor="white",
                 cbar_kws={"shrink": .82, "pad": .012, "fraction": .035,
                           "ticks": [-1, -.5, 0, .5, 1], "format": "%.1f"}, ax=ax)
@@ -206,15 +205,9 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
     result["correlations"] = file
 
     # 05: две читаемые группы pairplot; на обеих есть SalePrice.
-    target_corr = corr["SalePrice"].drop("SalePrice").abs().sort_values(ascending=False)
-    important = target_corr.index[: min(5, len(target_corr))].tolist()
-    groups = [important[:3], important[3:]]
-    for p, group in enumerate(groups):
-        if len(group) < 1:
+    for p, subset in enumerate(pairplot_samples):
+        if subset.empty:
             continue
-        subset = data[group + ["SalePrice"]].dropna()
-        if len(subset) > 400:
-            subset = subset.sample(n=400, random_state=RANDOM_STATE)
         pair = sns.pairplot(subset, diag_kind="hist",
                             plot_kws={"s": 13, "alpha": .5, "color": "#537fab"},
                             diag_kws={"color": "#537fab"})
@@ -232,43 +225,15 @@ def save_eda_plots(data: pd.DataFrame, dest: Path, *, price_threshold: int) -> d
         _finish_plot(pair.figure, file)
         result[f"pairplot_{p+1:02d}"] = file
 
-    # 06: двумерный PCA только для визуальной разведки данных.
-    pca_features = numeric.drop(columns=["SalePrice"], errors="ignore")
-    pca_features = pca_features.loc[:, pca_features.nunique(dropna=True) > 1]
-    if pca_features.shape[1] >= 2:
-        imputed = SimpleImputer(strategy="median").fit_transform(pca_features)
-        transformed = StandardScaler().fit_transform(imputed)
-        pca = PCA(n_components=2, random_state=RANDOM_STATE)
-        points = pca.fit_transform(transformed)
-        fig, ax = plt.subplots(figsize=(6.6, 8.1))
-        ax.scatter(points[:, 0], points[:, 1], c="#537fab", s=16, alpha=.5)
-        ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} дисперсии)")
-        ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} дисперсии)")
+    # 06: отображение подготовленных координат PCA, без повторных вычислений.
+    if pca_points is not None and pca_explained_variance is not None:
+        fig, ax = create_report_figure(figsize=(6.6, 8.1))
+        ax.scatter(pca_points[:, 0], pca_points[:, 1], c="#537fab", s=16, alpha=.5)
+        ax.set_xlabel(f"PC1 ({pca_explained_variance[0]:.1%} дисперсии)")
+        ax.set_ylabel(f"PC2 ({pca_explained_variance[1]:.1%} дисперсии)")
         fig.subplots_adjust(left=.14, right=.96, top=.96, bottom=.12)
         file = dest / "06_pca_numeric_features.png"
         _finish_plot(fig, file)
         result["pca"] = file
 
     return result
-
-
-# === Общие функции оформления изображений проекта ===
-# Не изменяют математическую логику визуализаций EDA.
-def create_a4_figure(**kwargs):
-    """Книжная A4-страница с белым фоном для графиков следующих этапов."""
-    import matplotlib.pyplot as plt
-    return plt.subplots(figsize=(8.27, 11.69), facecolor="white", **kwargs)
-
-
-def save_a4_figure(fig, path, *, dpi=200, pad_inches=0.22):
-    """Сохраняет график на белом фоне с полями для полных подписей."""
-    from pathlib import Path
-    import matplotlib.pyplot as plt
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if fig.get_figwidth() >= fig.get_figheight():
-        raise ValueError(f"Ожидалась книжная ориентация рисунка: {path}")
-    fig.set_facecolor("white")
-    fig.savefig(path, dpi=dpi, bbox_inches="tight",
-                pad_inches=pad_inches, facecolor="white")
-    plt.close(fig)

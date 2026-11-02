@@ -2,8 +2,13 @@
 # jupyter:
 #   jupytext:
 #     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.6
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -40,7 +45,7 @@ RESULTS = ROOT / "outputs" / "classification"
 required = ["cv_summary.csv", "cv_folds.csv", "oof_models.csv", "mlp_learning_history.csv"]
 missing = [name for name in required if not (RESULTS / name).exists()]
 if missing:
-    raise FileNotFoundError(f"Не найдены результаты {missing}. Запустите python -m house_prices_ai.classification из корня проекта")
+    raise FileNotFoundError(f"Не найдены результаты {missing}. Запустите python main.py classification из корня проекта")
 summary = pd.read_csv(RESULTS / "cv_summary.csv")
 folds = pd.read_csv(RESULTS / "cv_folds.csv")
 oof = pd.read_csv(RESULTS / "oof_models.csv")
@@ -169,7 +174,7 @@ if tuning_file.is_file() and trials_file.is_file():
                            "param_model__learning_rate", "param_model__subsample"] if c in trials]
     display(trials.sort_values("rank_test_score")[columns].head(5))
 else:
-    print("Подбор ещё не выполнялся. Из корня проекта запустите: python -m house_prices_ai.classification --tune-only")
+    print("Подбор ещё не выполнялся. Из корня проекта запустите: python main.py classification --tune-only")
 
 # %% [markdown]
 # Результат подбора нельзя трактовать как независимую оценку качества настроенной модели. Для окончательной проверки полезности подобранных параметров требуется повторная оценка на отдельных валидационных разбиениях либо вложенная кросс-валидация. Внешняя тестовая выборка не должна использоваться для выбора параметров.
@@ -188,4 +193,3 @@ leader = summary.iloc[0]
 print(f"Основной кандидат по среднему F1: {leader['Model']}")
 print(f"F1={leader['F1_mean']:.4f}, ROC-AUC={leader['ROC_AUC_mean']:.4f}, Recall={leader['Recall_mean']:.4f}")
 print("Оценки получены на CV обучающей выборки. Внешний test не участвовал в сравнении.")
-

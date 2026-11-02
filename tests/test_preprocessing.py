@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from house_prices_ai.preprocessing import (
-    CLASS_THRESHOLD, HouseFeatures, IQRClipper, RecalculateTotalUsefulArea, run_preprocessing,
+    HouseFeatures, IQRClipper, RecalculateTotalUsefulArea, run_preprocessing,
     _evaluate_vif, VIF_REDUCED_EXCLUDE,
 )
 

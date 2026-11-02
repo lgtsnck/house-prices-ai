@@ -67,10 +67,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Подготовлено: train={result.train_rows}, test={result.test_rows}, признаков={result.features_count}")
         elif args.command == "regression":
             if args.refresh_plots:
-                if args.output is not None:
-                    parser.error("--output не поддерживается для regression --refresh-plots")
-                from refresh_lr03_outputs import main as refresh_regression_figures
-                refresh_regression_figures()
+                from house_prices_ai.regression import refresh_regression_outputs
+                figures = refresh_regression_outputs(raw_path=args.data, out_dir=out)
+                print(f"Регрессионные диаграммы обновлены: {len(figures)}")
             elif args.tune_only:
                 from house_prices_ai.regression import load_lr02_split, tune_xgboost
                 X_train, _, y_train, _ = load_lr02_split(raw_path=args.data)
