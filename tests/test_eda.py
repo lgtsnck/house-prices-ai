@@ -1,4 +1,4 @@
-"""Тесты загрузки и EDA на полностью синтетических данных (без Kaggle CSV)."""
+"""Проверки загрузки и EDA на синтетических данных без Kaggle CSV."""
 from contextlib import redirect_stdout
 from io import StringIO
 

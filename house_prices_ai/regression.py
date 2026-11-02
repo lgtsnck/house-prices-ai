@@ -1,6 +1,6 @@
-"""ЛР №3: честная CV с предобработкой внутри каждого фолда.
+"""Сравнение регрессионных моделей с предобработкой внутри каждого фолда CV.
 
-Использует исходные строки, но только ID строк, отведённых ЛР №2 в train.
+Для обучения используются только записи, выделенные при общем разбиении данных.
 Внешняя тестовая выборка не участвует в отборе моделей и настройке параметров.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ class RegressionResult:
 
 def load_lr02_split(raw_path: str | Path = RAW_TRAIN_FILE,
                     processed_dir: str | Path = PROCESSED_DATA_DIR):
-    """Воссоздаёт именно разбиение ЛР №2, используя сохранённые Id.
+    """Восстанавливает зафиксированное разбиение по сохранённым Id.
 
     Возвращает исходные признаки, а не X_train_reg.csv; последнее важно для CV.
     """
@@ -59,7 +59,7 @@ def load_lr02_split(raw_path: str | Path = RAW_TRAIN_FILE,
         raise ValueError("Пересекаются обучающие и тестовые Id")
     by_id = raw.set_index("Id", verify_integrity=True)
     if len(train_ids)+len(test_ids) != len(raw) or len(set(np.r_[train_ids,test_ids])) != len(raw):
-        raise ValueError("Id из ЛР №2 не совпадают с числом исходных строк")
+        raise ValueError("Число сохранённых Id не совпадает с числом исходных строк")
     train = by_id.loc[train_ids].copy()
     test = by_id.loc[test_ids].copy()
     if train["SalePrice"].isna().any() or test["SalePrice"].isna().any():
@@ -107,7 +107,7 @@ def model_catalog() -> dict[str, object]:
 
 def cv_compare(X_train: pd.DataFrame, y_train: pd.Series, cv: KFold,
                models: dict[str, object] | None = None):
-    """Одинаковые фолды; независимые fit() трансформера и модели в каждом фолде."""
+    """Одинаковые фолды с независимым обучением преобразований и модели в каждом разбиении."""
     models = model_catalog() if models is None else models
     summaries, folds = [], []
     for name, estimator in models.items():
@@ -180,39 +180,39 @@ def _report(cv_summary: pd.DataFrame, test_metrics: pd.DataFrame,
     mlp = cv_summary.loc[cv_summary.Model == "MLP"].iloc[0]
     linear = cv_summary.loc[cv_summary.Model == "LinearRegression"].iloc[0]
     lines = [
-        "# Лабораторная работа №3 — регрессия: черновые выводы", "",
+        "# 3. Регрессия и сравнение моделей", "",
         "## Постановка задачи", "",
         "Прогноз SalePrice (USD) по историческим характеристикам недвижимости в Эймсе, штат Айова.",
-        "80% исходного датасета — обучающая выборка, 20% — отдельная тестовая выборка из ЛР №2.",
+        "80% исходного датасета используется для обучения, 20% составляет отдельную тестовую выборку, выделенную при подготовке данных.",
         "Выполнена пятикратная CV только на обучающих объектах; обработка пропусков,",
         "ограничение выбросов, One-Hot и StandardScaler обучаются **внутри каждого фолда**.", "",
         "## Выбор модели по CV", "",
-        f"Лидер по средней MAE: **{winner}**; MAE = **${best.MAE_mean:,.2f}**; "
-        f"RMSE = **${best.RMSE_mean:,.2f}**; R² = **{best.R2_mean:.4f}** "
+        f"Лидер по средней MAE - **{winner}**. MAE = **{best.MAE_mean:,.2f} USD**. "
+        f"RMSE = **{best.RMSE_mean:,.2f} USD**. R² = **{best.R2_mean:.4f}** "
         f"(стандартное отклонение R² = {best.R2_std:.4f}).", "",
-        f"Обычная линейная регрессия: CV R² = **{linear.R2_mean:.4f}**, "
-        f"Train R² = **{linear.Train_R2_mean:.4f}**; высокая разница — признак слабого обобщения.",
-        f"MLP: CV R² = **{mlp.R2_mean:.4f}**, Train R² = **{mlp.Train_R2_mean:.4f}**. ", "",
+        f"Линейная регрессия. CV R² = **{linear.R2_mean:.4f}**, "
+        f"Train R² = **{linear.Train_R2_mean:.4f}**. Большой разрыв может указывать на слабое обобщение.",
+        f"MLP. CV R² = **{mlp.R2_mean:.4f}**, Train R² = **{mlp.Train_R2_mean:.4f}**. ", "",
         "## Графики", "",
-        "- Рисунок 3.1 — сравнение R², MAE и RMSE на отдельных шкалах.",
-        "- Рисунок 3.2 — разброс R² между фолдами.",
-        "- Рисунок 3.3 — OOF-прогнозы против фактических цен у лидирующей модели.",
-        "- Рисунок 3.4 — остатки OOF-прогнозов.",
-        "- Рисунок 3.5 — Q-Q график остатков.",
-        "- Рисунок 3.6 — процесс обучения MLP на всей тренировочной части.", "",
+        "- Рисунок 3.1 - сравнение R², MAE и RMSE на отдельных шкалах.",
+        "- Рисунок 3.2 - разброс R² между фолдами.",
+        "- Рисунок 3.3 - OOF-прогнозы и фактические цены для выбранной модели.",
+        "- Рисунок 3.4 - остатки OOF-прогнозов.",
+        "- Рисунок 3.5 - Q-Q график остатков.",
+        "- Рисунок 3.6 - процесс обучения MLP на всей тренировочной части.", "",
         "## Методические оговорки", "",
-        "- Средние CV-метрики получены по одинаковым фолдам. Стандартное отклонение — не доверительный интервал.",
-        "- Фиксированный внешний test ранее использовался для диагностики отдельных объектов;",
-        "  поэтому его результаты описательные, а не полностью независимое подтверждение выбора.",
-        "- SHAP и подробная интерпретация отнесены к ЛР №5.",
-        "- Признаки бассейна редки; изучение конкретного объекта не доказывает причинного эффекта.",
-        "- Предобработка применяется отдельно на каждом CV-фолде; внешний test не участвует в подборе.",
+        "- Средние CV-метрики получены по одинаковым фолдам. Стандартное отклонение не является доверительным интервалом.",
+        "- Фиксированная тестовая выборка уже использовалась для диагностики отдельных объектов.",
+        "  Поэтому результаты рассматриваются как описательные и не служат новым независимым подтверждением выбора.",
+        "- SHAP и подробная интерпретация рассматриваются на этапе объяснения моделей.",
+        "- Признаки бассейна редки. Анализ конкретного объекта не доказывает причинного эффекта.",
+        "- Предобработка настраивается отдельно на каждом фолде CV. Тестовая выборка не участвует в подборе.",
     ]
     if tuning:
         lines.extend(["", "## Подбор XGBoost", "",
-                      f"RandomizedSearchCV (3-fold, MAE): {tuning['cv3_mae_usd']:,.2f} USD;",
+                      f"RandomizedSearchCV (3-fold, MAE) - {tuning['cv3_mae_usd']:,.2f} USD.",
                       "это оценка при подборе параметров, не независимая оценка качества.",
-                      f"Подобранные параметры: `{tuning['best_params']}`."])
+                      f"Подобранные параметры - `{tuning['best_params']}`."])
     return "\n".join(lines)+"\n"
 
 
@@ -221,7 +221,7 @@ def run_regression(raw_path: str | Path = RAW_TRAIN_FILE,
                    out_dir: str | Path = OUTPUT_DIR / "regression",
                    folds: int = 5, tune: bool = False, tuning_iterations: int = 8,
                    make_plots: bool = True) -> RegressionResult:
-    """Полный черновик ЛР №3: CV, диагностический test, OOF графики и артефакты."""
+    """Выполняет сравнение моделей по CV и сохраняет диагностические результаты и графики OOF."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     X_train, X_test, y_train, y_test = load_lr02_split(raw_path, processed_dir)
@@ -238,7 +238,7 @@ def run_regression(raw_path: str | Path = RAW_TRAIN_FILE,
     winner = str(summary.iloc[0]["Model"])
     print("\nCV (сортировка по MAE):\n", summary.round(4).to_string(index=False), flush=True)
 
-    # Holdout — для сопоставления с уже изученным тестом, НЕ подбора параметров.
+    # Holdout применяется для диагностики, а не для подбора параметров.
     trained = {}
     test_rows = []
     test_predictions = {}
@@ -256,7 +256,7 @@ def run_regression(raw_path: str | Path = RAW_TRAIN_FILE,
     joblib.dump(trained["XGBoost"], out_dir / "xgboost_baseline_pipeline.joblib")
     print("\nВнешний тест (только описание):\n", test_metrics.round(3).to_string(index=False), flush=True)
 
-    # Локальный ранее исследованный объект: находим по сырой категории и цене,
+    # Ранее рассмотренный объект определяем по исходной категории и цене,
     # а не по нестабильному порядковому индексу 259.
     special_mask = (X_test.get("PoolQC", pd.Series(index=X_test.index,dtype=object)).eq("Gd")
                     & y_test.eq(274970))

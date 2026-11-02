@@ -50,7 +50,7 @@ def _features_and_values(pipeline, raw: pd.DataFrame) -> tuple[np.ndarray, list[
 def _xgb_contributions(pipeline, raw: pd.DataFrame, task: str):
     """Возвращает значения Tree SHAP на шкале raw margin модели XGBoost.
 
-    Регрессия — в долларах, бинарная классификация — в логарифме шансов.
+    Для регрессии вклады выражаются в долларах. Для бинарной классификации используется логарифм шансов.
     Проверяет аддитивность и соответствие сохранённому Pipeline.
     """
     features, names = _features_and_values(pipeline, raw)
@@ -99,7 +99,7 @@ def _make_explanation(values, base, data, names):
 
 
 def _select_regression_case(X_test: pd.DataFrame, y_test: pd.Series) -> int:
-    # Ранее исследованный дом: реальная цена $274 970, качество бассейна Gd.
+    # Ранее исследованный дом с ценой 274 970 USD и качеством бассейна Gd.
     if 1424 in X_test.index:
         return int(np.flatnonzero(X_test.index.to_numpy() == 1424)[0])
     pool = X_test.get("PoolQC", pd.Series(index=X_test.index, dtype=object))
@@ -165,7 +165,7 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
     if reg_case not in positions:
         positions[0] = reg_case
         positions = np.sort(positions)
-    # Классификация: наиболее неоднозначный прогноз по всему внешнему test.
+    # Для классификации выбираем наиболее неоднозначный прогноз на тестовой части.
     uncertain = np.abs(xgb_clf.predict_proba(X_test)[:, 1] - .5)
     clf_case = int(np.argmin(uncertain))
     if clf_case not in positions:
@@ -197,7 +197,7 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
         p = figure_dir / f"5_{num_prefix + 1}_shap_bar_{name_prefix}.png"
         plot_shap_bar(explanation, p)
         figs[f"bar_{task}"] = p
-        # Локальный объект: возможно находится вне случайной выборки SHAP.
+        # Объект для локальной интерпретации может не входить в выборку SHAP.
         local_raw = X_test.iloc[[case_idx]]
         local_data, local_names, local_values, local_base, local_pred, local_margin = \
             _xgb_contributions(model, local_raw, task)
@@ -230,7 +230,7 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
               f"SHAP успешно восстановил прогноз.", flush=True)
 
     if compare_rf_shap:
-        # Дополнительное сравнение на ОДНИХ И ТЕХ ЖЕ объектах, не на разных подвыборках.
+        # Дополнительное сравнение выполняется на одних и тех же объектах.
         compare_raw = X_test.iloc[positions[:min(80, len(positions))]]
         rf_values, rf_names = _features_and_values(rf_reg, compare_raw)
         _, xg_names, xg_shap, _, _, _ = _xgb_contributions(xgb_reg, compare_raw, "regression")
@@ -262,14 +262,14 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
     reg_meta = json.loads((out / "local_regression.json").read_text(encoding="utf-8"))
     clf_meta = json.loads((out / "local_classification.json").read_text(encoding="utf-8"))
     report.write_text("\n".join([
-        "# Интерпретация моделей стоимости недвижимости", "",
+        "# 5. Интерпретация моделей стоимости недвижимости", "",
         "Проанализированы XGBoost и Random Forest для регрессии и бинарной классификации.",
         "Все обучаемые преобразования получены из исходных train-строк. Внешний тест",
         "использован для описания уже построенных прогнозов, а не для выбора гиперпараметров.", "",
         "## Глобальная важность", "",
         "Встроенная Feature Importance характеризует использование признака моделью,",
         "но не измеряет причинно-следственную связь с рыночной стоимостью.",
-        "Для Random Forest применяется уменьшение неоднородности, для XGBoost — относительная важность разделений.",
+        "Для Random Forest применяется уменьшение неоднородности, для XGBoost оценивается относительная важность разделений.",
         "Числовые величины разных алгоритмов не следует напрямую приравнивать.", "",
         f"Наиболее высокий средний абсолютный SHAP-вклад в регрессии: **{reg_top.Feature}**.",
         f"В классификации: **{clf_top.Feature}**.", "",
@@ -278,7 +278,7 @@ def run_explainability(output_dir: str | Path = OUTPUT_DIR / "explainability",
         f"прогноз ${reg_meta['Pred_USD']:,.0f}.",
         f"Классификация: Id={clf_meta['Id']}, фактический класс {clf_meta['Actual']}, "
         f"вероятность дорогого сегмента {clf_meta['ProbabilityClass1']:.1%}.", "",
-        "SHAP-регрессия интерпретируется в долларах США. SHAP-классификация — на шкале",
+        "Для регрессии значения SHAP выражаются в долларах США. Для классификации используется шкала",
         "логарифма шансов (log-odds), где сумма базового значения и вкладов преобразуется",
         "в вероятность через логистическую функцию.", "",
         "## Ограничения", "",

@@ -24,7 +24,7 @@ class TestProjectIntegration(unittest.TestCase):
     def test_notebook_image_captions(self):
         text = (ROOT / "notebooks" / "06_clustering.py").read_text(encoding="utf-8")
         for idx in range(1, 9):
-            self.assertIn(f"Рисунок 6.{idx} —", text)
+            self.assertIn(f"Рисунок 6.{idx} -", text)
         self.assertNotIn('display(Markdown(report.read_text', text)
         self.assertNotIn('# ### Рисунок', text)
 

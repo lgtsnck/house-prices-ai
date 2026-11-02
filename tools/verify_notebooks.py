@@ -67,7 +67,7 @@ def main(argv=None) -> int:
                 notebook, timeout=600, kernel_name='python3',
                 resources={'metadata': {'path': str(NOTEBOOKS)}}, allow_errors=False,
             )
-            # Выполняет в памяти; существующий .ipynb не перезаписывается.
+            # Выполнение происходит в памяти. Существующий .ipynb не перезаписывается.
             client.execute()
             print(f'  Выполнение ячеек OK', flush=True)
         results.append(nb.name)

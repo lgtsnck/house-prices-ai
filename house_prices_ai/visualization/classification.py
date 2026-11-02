@@ -1,4 +1,4 @@
-"""Classification model comparison charts."""
+"""Графики сравнения моделей классификации."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,7 +9,7 @@ import pandas as pd
 from .common import create_a4_figure, save_a4_figure
 
 
-# Визуализация классификации. Числовые данные рассчитывает classification.py.
+# Числовые данные для графиков подготавливает classification.py.
 _CLASSIFICATION_COLORS = {
     "DummyClassifier": "#8d969f",
     "LogisticRegression": "#427bb2",
@@ -31,7 +31,7 @@ def create_classification_figures(plot_data: dict,
                                   summary: pd.DataFrame, output_dir: Path,
                                   mlp_history: pd.DataFrame | None = None,
                                   mlp_details: dict | None = None) -> dict[str, Path]:
-    """Шесть рисунков A4: состав выборки, сравнение, матрицы, ROC, PR, MLP."""
+    """Шесть рисунков A4 с составом выборки, сравнением метрик, матрицами ошибок, ROC, PR и MLP."""
     output_dir.mkdir(parents=True, exist_ok=True)
     figures = {}
     models = plot_data["models"]

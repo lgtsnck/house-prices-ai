@@ -1,11 +1,11 @@
-"""Shared A4 figure factories and image export helpers."""
+"""Общие функции создания листов A4 и сохранения изображений."""
 from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")  # Headless backend for CLI and automated tests.
+matplotlib.use("Agg")  # Режим без графического окна для командного запуска и тестов.
 import matplotlib.pyplot as plt
 
 
@@ -16,7 +16,7 @@ A4_RASTER_SIZE_180DPI = (1488, 2104)
 
 
 def create_report_figure(*args, figsize=A4_PORTRAIT_INCHES, **kwargs):
-    """Создать белую фигуру с той же сигнатурой, что create_report_figure().
+    """Создаёт белую фигуру с возможностью указать размер и параметры осей.
 
     figsize может быть задан явно для старых графиков, чтобы не изменять
     пропорции и поля во время рефакторинга.

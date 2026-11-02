@@ -1,4 +1,4 @@
-"""Clustering diagnostics and comparison charts."""
+"""Графики диагностики и сравнения результатов кластеризации."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,7 +36,7 @@ def create_clustering_figures(data: dict, out: Path) -> dict[str, Path]:
     dbscan_labels = data["dbscan_labels"]
     cmap = {c: _CLUSTER_COLORS[i % len(_CLUSTER_COLORS)] for i, c in enumerate(plot_labels)}
 
-    # Рисунок 6.1: выбор k, вертикальная компоновка подходит для A4.
+    # Рисунок 6.1. Выбор k. Вертикальная компоновка подходит для A4.
     fig, ax = create_a4_figure()
     ax.plot(k_table.k, k_table.Inertia, marker="o", color=_CLUSTER_COLORS[0])
     ax.axvline(selected_k, color=_CLUSTER_COLORS[1], ls="--", alpha=.7)

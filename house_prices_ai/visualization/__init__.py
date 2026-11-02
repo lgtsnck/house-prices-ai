@@ -1,11 +1,11 @@
-"""Public visualization API; implementations grouped by project stage.
+"""Публичный интерфейс визуализации с разделением реализаций по этапам исследования.
 
 This façade retains existing imports such as:
     from house_prices_ai.visualization import create_regression_figures
 """
 from __future__ import annotations
 
-# Import common first so Matplotlib selects the headless backend before pyplot.
+# Сначала импортируем common, чтобы Matplotlib настроил режим без графического окна.
 from .common import (
     A4_PORTRAIT_INCHES,
     A4_RASTER_SIZE_180DPI,
@@ -36,7 +36,7 @@ __all__ = [
     "save_a4_figure",
     "save_shap_a4_figure",
     "save_eda_plots",
-    # Historical helpers are retained for tests and external imports.
+    # Вспомогательные функции сохранены для совместимости с тестами и импортами.
     "_draw_boxplot",
     "_finish_plot",
     "save_preprocessing_plots",

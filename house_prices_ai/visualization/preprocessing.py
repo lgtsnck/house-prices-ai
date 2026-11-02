@@ -1,4 +1,4 @@
-"""Data preprocessing and feature engineering charts."""
+"""Графики предобработки данных и инженерии признаков."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,7 +10,7 @@ import pandas as pd
 from .common import create_report_figure, save_a4_figure
 
 
-# Графики предобработки: расчёты выполнены в preprocessing.py.
+# Графики строятся по результатам вычислений из preprocessing.py.
 def _center_preprocessing_bar(fig: plt.Figure, ax: plt.Axes) -> None:
     """Центрировать горизонтальные столбцы вместе с длинными подписями."""
     fig.canvas.draw()

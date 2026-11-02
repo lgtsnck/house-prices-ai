@@ -1,4 +1,4 @@
-"""Regression model comparison and residual diagnostics charts."""
+"""Графики сравнения регрессионных моделей и анализа остатков."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,7 +11,7 @@ from scipy import stats
 from .common import create_a4_figure, save_a4_figure
 
 
-# Диаграммы регрессии: аналитические входные данные подготовлены в evaluation.py
+# Данные для диаграмм регрессии подготовлены в evaluation.py
 # и regression.py. Из этого модуля не выполняется обучение моделей.
 def _save_regression_figure(fig: plt.Figure, path: Path) -> None:
     """Сохранить исторический формат рисунков регрессии (A4 с полями)."""
@@ -32,7 +32,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
     colors = "#477baf"
     with plt.rc_context({"font.size": 10, "axes.grid": True, "grid.alpha": .18}):
 
-        # 3.1 — три сопоставимые по моделям, но РАЗДЕЛЬНЫЕ шкалы метрик.
+        # 3.1. Три отдельные шкалы метрик для одних и тех же моделей.
         # Нельзя строить MAE, RMSE (USD) и R² на одной числовой оси.
         order = cv_summary.sort_values("MAE_mean")["Model"].tolist()
         ranked = cv_summary.set_index("Model").loc[order]
@@ -65,7 +65,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
         result["metrics"] = out_dir / "3_1_cv_mae.png"
         _save_regression_figure(fig, result["metrics"])
 
-        # 3.2 — вариация валидационного R² между пятью фолдами.
+        # 3.2. Разброс R² между пятью валидационными фолдами.
         model_order = cv_summary.sort_values("R2_mean", ascending=False)["Model"].tolist()
         values = [cv_folds.loc[cv_folds.Model == name, "R2"].to_numpy() for name in model_order]
         fig, ax = create_a4_figure(figsize=(8.27, 11.69))
@@ -83,7 +83,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
         pred = np.asarray(oof_pred, dtype=float)
         residual = y-pred
 
-        # 3.3 — прогноз против факта: out-of-fold prediction.
+        # 3.3. Сравнение фактических цен с внефолдовыми прогнозами OOF.
         fig, ax = create_a4_figure(figsize=(8.27, 11.69))
         ax.scatter(y, pred, s=13, alpha=.48, color=colors)
         lo, hi = float(min(y.min(),pred.min())), float(max(y.max(), pred.max()))
@@ -91,12 +91,12 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
         ax.set_xlabel("Фактическая цена, USD")
         ax.set_ylabel("Прогноз (OOF), USD")
         ax.set_xlim(lo,hi); ax.set_ylim(lo,hi)
-        # Не принуждаем оси к квадратной области: рисунок остаётся книжным A4.
+        # Сохраняем книжный формат A4 без принудительного выравнивания осей.
         fig.subplots_adjust(left=.15, right=.94, top=.94, bottom=.15)
         result["actual_pred"] = out_dir / "3_3_oof_actual_vs_pred.png"
         _save_regression_figure(fig, result["actual_pred"])
 
-        # 3.4 — остатки относительно прогноза.
+        # 3.4. Остатки относительно прогноза.
         fig, ax = create_a4_figure(figsize=(8.27, 11.69))
         ax.scatter(pred, residual, s=13, alpha=.48, color=colors)
         ax.axhline(0, lw=1.5, ls='--', color="#b65d4f")
@@ -106,7 +106,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
         result["residual"] = out_dir / "3_4_oof_residuals.png"
         _save_regression_figure(fig, result["residual"])
 
-        # 3.5 — Q-Q. Нормальность остатков не обязательна для XGBoost,
+        # 3.5. Q-Q диаграмма. Для XGBoost нормальность остатков не обязательна,
         # график является диагностикой хвостов распределения ошибок.
         fig, ax = create_a4_figure(figsize=(8.27, 11.69))
         stats.probplot(residual, dist="norm", plot=ax)
@@ -121,7 +121,7 @@ def create_regression_figures(cv_summary: pd.DataFrame, cv_folds: pd.DataFrame,
         result["qq"] = out_dir / "3_5_oof_qq.png"
         _save_regression_figure(fig, result["qq"])
 
-        # 3.6 — динамика MLP, обученной на ВСЕЙ внешней train-части.
+        # 3.6. Динамика MLP после обучения на всей тренировочной части.
         if mlp_history is not None and not mlp_history.empty:
             loss = mlp_history["Training_Loss"].to_numpy(dtype=float)
             validation = mlp_history["Validation_R2"].to_numpy(dtype=float)

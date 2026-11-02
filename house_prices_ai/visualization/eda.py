@@ -1,4 +1,4 @@
-"""Exploratory data analysis charts."""
+"""Графики разведочного анализа данных."""
 from __future__ import annotations
 
 from math import ceil
@@ -65,7 +65,7 @@ def _finish_plot(fig: plt.Figure, path: Path, *, dpi: int = 180) -> None:
 
 
 def _sheet_axes(count: int) -> tuple[plt.Figure, np.ndarray]:
-    """Компактная страница: до восьми панелей, без пустого четвёртого ряда."""
+    """Компактная страница с числом панелей до восьми без пустого четвёртого ряда."""
     if not 1 <= count <= 8:
         raise ValueError("Количество панелей должно быть от 1 до 8")
     rows = ceil(count / 2)
@@ -110,7 +110,7 @@ def save_eda_plots(
     pca_explained_variance: tuple[float, float] | None,
 ) -> dict[str, Path]:
     """Нарисовать EDA, используя исключительно подготовленные аналитические данные."""
-    # Контекст вместо глобального sns.set_theme: настройки других этапов не меняем.
+    # Контекст настроек Seaborn не влияет на остальные этапы исследования.
     with sns.axes_style("whitegrid"), sns.plotting_context("notebook", font_scale=0.85):
         return _render_eda_plots(
             numeric, dest, price_threshold=price_threshold,
@@ -135,7 +135,7 @@ def _render_eda_plots(
     result: dict[str, Path] = {}
     columns = list(numeric.columns)
 
-    # 01: гистограммы числовых характеристик, до восьми панелей на страницу.
+    # 01. Гистограммы числовых характеристик, до восьми панелей на страницу.
     for p, offset in enumerate(range(0, len(columns), 8)):
         page_columns = columns[offset:offset + 8]
         fig, axes = _sheet_axes(len(page_columns))
@@ -158,7 +158,7 @@ def _render_eda_plots(
         _finish_plot(fig, file)
         result[f"histograms_{p+1:02d}"] = file
 
-    # 02: диаграммы размаха. Отдельные точки за усами показываются явно.
+    # 02. Диаграммы размаха с обозначением отдельных точек за усами.
     for p, offset in enumerate(range(0, len(columns), 8)):
         page_columns = columns[offset:offset + 8]
         fig, axes = _sheet_axes(len(page_columns))
@@ -174,7 +174,7 @@ def _render_eda_plots(
         _finish_plot(fig, file)
         result[f"boxplots_{p+1:02d}"] = file
 
-    # 03: ценовая цель. На весь рисунок оставляем только аналитические подписи.
+    # 03. Распределение целевой переменной с аналитическими подписями.
     fig, ax = create_report_figure(figsize=(6.6, 8.2))
     sns.histplot(data=numeric, x="SalePrice", bins=35, kde=True, color="#537fab", ax=ax)
     ax.axvline(price_threshold, linestyle="--", color="#b76555",
@@ -187,8 +187,8 @@ def _render_eda_plots(
     _finish_plot(fig, file)
     result["target"] = file
 
-    # 04: полная корреляционная матрица на одном книжном листе.
-    # Подписи остаются техническими: их расшифровка — в Markdown Notebook.
+    # 04. Полная корреляционная матрица на одном книжном листе.
+    # Технические названия признаков поясняются в тексте Notebook.
     # Увеличиваем матрицу в макете, не растягивая готовое изображение.
     fig, ax = create_report_figure(figsize=(7.45, 8.25))
     sns.heatmap(correlations, cmap="coolwarm", center=0, vmin=-1, vmax=1,
@@ -204,7 +204,7 @@ def _render_eda_plots(
     _finish_plot(fig, file)
     result["correlations"] = file
 
-    # 05: две читаемые группы pairplot; на обеих есть SalePrice.
+    # 05. Две группы парных графиков, в каждой присутствует SalePrice.
     for p, subset in enumerate(pairplot_samples):
         if subset.empty:
             continue
@@ -225,7 +225,7 @@ def _render_eda_plots(
         _finish_plot(pair.figure, file)
         result[f"pairplot_{p+1:02d}"] = file
 
-    # 06: отображение подготовленных координат PCA, без повторных вычислений.
+    # 06. Отображение подготовленных координат PCA без повторных вычислений.
     if pca_points is not None and pca_explained_variance is not None:
         fig, ax = create_report_figure(figsize=(6.6, 8.1))
         ax.scatter(pca_points[:, 0], pca_points[:, 1], c="#537fab", s=16, alpha=.5)
