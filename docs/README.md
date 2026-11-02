@@ -89,7 +89,7 @@ print(f"Локальный отчёт: {result.report_path}")
 Полных дубликатов: 0
 Дубликатов без Id: 0
 Повторов Id: 0
-Локальный отчёт: F:\JetBrainsProjects\PycharmProjects\house-prices-ai\outputs\eda\lr01_eda_summary.md
+Локальный отчёт: outputs/eda/lr01_eda_summary.md
 ```
 
 <details>
@@ -664,17 +664,27 @@ print(f"Пропущенных ячеек: {int(df.isna().sum().sum())}")
 <summary>Код ячейки 5</summary>
 
 ```python
-balance = (df["SalePrice"] >= CLASS_THRESHOLD).astype(int).value_counts().sort_index()
-display(pd.DataFrame({"Число объектов": balance, "Доля, %": (balance / len(df) * 100).round(1)}))
+balance = (
+    (df["SalePrice"] >= CLASS_THRESHOLD)
+    .astype(int)
+    .value_counts()
+    .sort_index()
+)
+
+balance.index.name = "Ценовой класс"
+
+display(pd.DataFrame({
+    "Число объектов": balance,
+    "Доля, %": (balance / len(df) * 100).round(1)
+}))
 ```
 
 </details>
 
-|  | Число объектов | Доля, % |
-| --- | --- | --- |
-| SalePrice |  |  |
-| 0 | 1025 | 70.2 |
-| 1 | 435 | 29.8 |
+| Ценовой класс | Число объектов | Доля, % |
+|---|---:|---:|
+| 0 | 1 025 | 70,2 |
+| 1 | 435 | 29,8 |
 
 ### Выполнение предобработки
 
@@ -701,7 +711,7 @@ print(f"Отчёт: {result.report_path}")
 Обучающая выборка: 1168 строк
 Тестовая выборка: 292 строк
 Признаков после кодирования: 316
-Отчёт: F:\JetBrainsProjects\PycharmProjects\house-prices-ai\outputs\preprocessing\preprocessing_summary.md
+Отчёт: outputs/preprocessing/preprocessing_summary.md
 ```
 
 #### Пропуски в обучающей выборке
@@ -1027,7 +1037,7 @@ print("Обученный pipeline:", OUTPUT_DIR / "preprocessing" / "preprocess
 | 7 | y_test_clf.csv | True |
 
 ```text
-Обученный pipeline: F:\JetBrainsProjects\PycharmProjects\house-prices-ai\outputs\preprocessing\preprocessing_pipeline.joblib
+Обученный pipeline: outputs/preprocessing/preprocessing_pipeline.joblib
 ```
 
 ## 3. Регрессия и сравнение моделей

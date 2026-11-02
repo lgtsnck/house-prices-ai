@@ -71,8 +71,19 @@ print(f"Пропущенных ячеек: {int(df.isna().sum().sum())}")
 # В матрицу входных признаков не включаем цену продажи и `Id` (идентификатор записи). Разделение обучающей и тестовой частей проводится один раз, одинаково для обеих задач.
 
 # %%
-balance = (df["SalePrice"] >= CLASS_THRESHOLD).astype(int).value_counts().sort_index()
-display(pd.DataFrame({"Число объектов": balance, "Доля, %": (balance / len(df) * 100).round(1)}))
+balance = (
+    (df["SalePrice"] >= CLASS_THRESHOLD)
+    .astype(int)
+    .value_counts()
+    .sort_index()
+)
+
+balance.index.name = "Ценовой класс"
+
+display(pd.DataFrame({
+    "Число объектов": balance,
+    "Доля, %": (balance / len(df) * 100).round(1)
+}))
 
 # %% [markdown]
 # ## Выполнение предобработки
