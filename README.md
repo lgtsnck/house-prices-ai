@@ -20,6 +20,39 @@ python -m pip check
 
 Если PowerShell блокирует активацию, можно запускать `\.venv\Scripts\python.exe` напрямую вместо изменения системной политики выполнения скриптов. В PyCharm следует выбрать интерпретатор `.venv\Scripts\python.exe`.
 
+## Быстрый старт на macOS (Apple Silicon)
+
+Проект проверен на macOS с процессором Apple Silicon и Python 3.13.
+
+Для работы XGBoost требуется системная библиотека OpenMP (`libomp`). Она устанавливается через [Homebrew](https://brew.sh/) вне виртуального окружения Python.
+
+```bash
+# Установка системной зависимости
+brew install libomp
+
+# Клонирование проекта
+git clone https://github.com/lgtsnck/house-prices-ai.git
+cd house-prices-ai
+
+# Создание и активация виртуального окружения
+python3.13 -m venv .venv
+source .venv/bin/activate
+
+# Установка зависимостей
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip check
+
+# Проверка загрузки XGBoost
+python -c "import xgboost; print(xgboost.__version__)"
+```
+
+В PyCharm необходимо выбрать интерпретатор `.venv/bin/python`.
+
+Отсутствие `libomp` может привести к ошибке загрузки `libxgboost.dylib`. Установка этой библиотеки через Homebrew устраняет проблему без переустановки Python-пакетов.
+
+Для проверки проекта используются команды из раздела «Проверка проекта». Порядок выполнения исследований одинаков для Windows и macOS.
+
 **Исходные данные не входят в репозиторий.** Для воспроизведения результатов необходимо принять условия соревнования Kaggle, скачать `train.csv` со [страницы данных](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data) и разместить его в `data/raw/train.csv`. Это единственный обязательный внешний CSV. Файлы `test.csv` и `data_description.txt` при необходимости можно положить рядом. Подробнее в [`data/README.md`](data/README.md).
 
 Для проверки установки и работы командного интерфейса используются следующие команды.
@@ -118,7 +151,7 @@ python tools/verify_notebooks.py
 
 Unit-тесты проверяют основные компоненты и взаимодействие модулей. Структурная проверка Notebook не означает повторного выполнения всех ячеек или переобучения моделей. Для полной проверки воспроизводимости нужно выполнить команды исследования на исходном `train.csv` и изучить сформированные результаты.
 
-Проверенное окружение на Windows использовало Python 3.13. Проверка на macOS с Apple Silicon запланирована отдельно, поэтому совместимость этой платформы пока не подтверждается.
+Проект проверен на Windows x64 и macOS (Apple Silicon) с использованием Python 3.13. На обеих платформах успешно выполнены unit-тесты, структурная проверка Jupyter Notebook и исследовательские сценарии.
 
 ## Ограничения исследования
 
